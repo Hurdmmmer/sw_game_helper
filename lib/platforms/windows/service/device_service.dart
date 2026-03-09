@@ -1,12 +1,9 @@
 import 'dart:async';
 
-import 'package:sw_game_helper/platforms/windows/bridge_generated/rust_scrcpy_api.dart'
-    as bridge;
-import 'package:sw_game_helper/platforms/windows/bridge_generated/rust_scrcpy_api/model.dart';
-import 'package:sw_game_helper/platforms/windows/bridge_generated/scrcpy/control.dart'
-    as control;
 import 'package:sw_game_helper/enums/connection_status.dart';
 import 'package:sw_game_helper/models/device_info.dart';
+import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
+
 
 /// 屏幕方向枚举
 enum DeviceScreenOrientation { auto, portrait, landscape }
@@ -56,7 +53,7 @@ abstract class DeviceService {
   Future<void> setCurrentDeviceOrientation(DeviceScreenOrientation orientation);
 
   /// 发送触控事件到当前会话。
-  Future<void> sendTouchEvent(control.TouchEvent event);
+  Future<void> sendTouchEvent(TouchEvent event);
 
   /// 设备连接状态流
   Stream<ConnectionStatus> get connectionStatus => _statusController.stream;
@@ -73,10 +70,10 @@ abstract class DeviceService {
   /// 1. 视频帧刷新由 Rust->Runner 回调驱动；
   /// 2. 会话事件同样由 Rust 回调推送到 Dart，不再轮询；
   /// 3. 该流仍保留为 UI 统一订阅入口。
-  Stream<bridge.SessionEvent> streamSessionEvents();
+  Stream<SessionEvent> streamSessionEvents();
 
   /// 拉取当前会话统计（未连接时返回 null）。
-  Future<bridge.SessionStats?> getCurrentSessionStats();
+  Future<SessionStats?> getCurrentSessionStats();
 
   set currentDevice(AppDeviceInfo? device) {
     _currentDevice = device;
@@ -91,3 +88,9 @@ abstract class DeviceService {
     _statusController.close();
   }
 }
+
+
+
+
+
+

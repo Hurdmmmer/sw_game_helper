@@ -3,11 +3,8 @@ import 'dart:async';
 import 'package:sw_game_helper/enums/connection_mode.dart';
 import 'package:sw_game_helper/enums/connection_status.dart';
 import 'package:sw_game_helper/models/device_info.dart';
-import 'package:sw_game_helper/platforms/windows/bridge_generated/rust_scrcpy_api.dart'
-    as bridge;
-import 'package:sw_game_helper/platforms/windows/bridge_generated/rust_scrcpy_api/model.dart';
-import 'package:sw_game_helper/platforms/windows/bridge_generated/scrcpy/control.dart'
-    as control;
+import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
+
 import 'package:sw_game_helper/platforms/windows/service/device_service.dart';
 import 'package:sw_game_helper/platforms/windows/third_sdk/scrcpy_rust_third_party_api.dart';
 import 'package:sw_game_helper/utils/logger_service.dart';
@@ -23,11 +20,11 @@ class DeviceServiceImpl extends DeviceService {
   static const Duration _autoReconnectBaseDelay = Duration(milliseconds: 180);
 
   /// 会话事件广播流（运行态、错误、分辨率变化等）。
-  final StreamController<bridge.SessionEvent> _sessionEventController =
-      StreamController<bridge.SessionEvent>.broadcast();
+  final StreamController<SessionEvent> _sessionEventController =
+      StreamController<SessionEvent>.broadcast();
 
   /// 会话事件订阅（统一由该订阅驱动上层状态）。
-  StreamSubscription<bridge.SessionEvent>? _eventSub;
+  StreamSubscription<SessionEvent>? _eventSub;
 
   /// 手动断开标志：避免断开期间触发自动重连。
   bool _manualDisconnecting = false;
@@ -117,7 +114,7 @@ class DeviceServiceImpl extends DeviceService {
   void _routeSessionEvent({
     required String sessionId,
     required int epoch,
-    required bridge.SessionEvent event,
+    required SessionEvent event,
   }) {
     _sessionEventController.add(event);
     event.when(
@@ -308,7 +305,7 @@ class DeviceServiceImpl extends DeviceService {
     return text.isEmpty || text.toLowerCase() == 'unknown';
   }
 
-  static String _displayName(bridge.DeviceInfo info) {
+  static String _displayName(DeviceInfo info) {
     if (!_isUnknown(info.model)) {
       return _capitalize(info.model);
     }
@@ -321,26 +318,26 @@ class DeviceServiceImpl extends DeviceService {
   }
 
   /// 判断是不是 USB 或者 WIFI 连接
-  static ConnectionMode _modeOf(bridge.DeviceInfo info) {
+  static ConnectionMode _modeOf(DeviceInfo info) {
     final ip = info.ip?.trim() ?? '';
     return ip.isEmpty ? ConnectionMode.usb : ConnectionMode.wifi;
   }
 
-  static bridge.RenderPipelineMode _toBridgeRenderPipelineMode(
-    RenderPipelineMode mode,
-  ) {
+  static RenderPipelineMode _toBridgeRenderPipelineMode(RenderPipelineMode mode,) {
     return switch (mode) {
-      RenderPipelineMode.original => bridge.RenderPipelineMode.original,
-      RenderPipelineMode.cpuPixelBufferV2 =>
-        bridge.RenderPipelineMode.cpuPixelBufferV2,
+      RenderPipelineMode.original => RenderPipelineMode.original,
+      RenderPipelineMode.cpuPixelBufferV2 => RenderPipelineMode.cpuPixelBufferV2,
     };
   }
 
-  static bridge.DecoderMode _toBridgeDecoderMode(DeviceDecoderMode mode) {
+  /// 将 [DeviceDecoderMode] 转换为 Rust 侧的 [DecoderMode]。
+  /// 注意： 
+  /// - Rust 侧解码器模式与 Flutter 侧枚举值不同，需转换。
+  static DecoderMode _toBridgeDecoderMode(DeviceDecoderMode mode) {
     return switch (mode) {
-      DeviceDecoderMode.preferHardware => bridge.DecoderMode.preferHardware,
-      DeviceDecoderMode.forceHardware => bridge.DecoderMode.forceHardware,
-      DeviceDecoderMode.forceSoftware => bridge.DecoderMode.forceSoftware,
+      DeviceDecoderMode.preferHardware => DecoderMode.preferHardware,
+      DeviceDecoderMode.forceHardware => DecoderMode.forceHardware,
+      DeviceDecoderMode.forceSoftware => DecoderMode.forceSoftware,
     };
   }
 
@@ -451,7 +448,7 @@ class DeviceServiceImpl extends DeviceService {
   }
 
   @override
-  Future<void> sendTouchEvent(control.TouchEvent event) async {
+  Future<void> sendTouchEvent(TouchEvent event) async {
     final sessionId = currentSessionId;
     if (sessionId == null || sessionId.isEmpty) {
       return;
@@ -478,9 +475,9 @@ class DeviceServiceImpl extends DeviceService {
     }
 
     final mode = switch (orientation) {
-      DeviceScreenOrientation.auto => bridge.OrientationMode.auto,
-      DeviceScreenOrientation.portrait => bridge.OrientationMode.portrait,
-      DeviceScreenOrientation.landscape => bridge.OrientationMode.landscape,
+      DeviceScreenOrientation.auto => OrientationMode.auto,
+      DeviceScreenOrientation.portrait => OrientationMode.portrait,
+      DeviceScreenOrientation.landscape => OrientationMode.landscape,
     };
 
     await ScrcpyRustThirdPartyApi.instance.setOrientationMode(
@@ -495,11 +492,11 @@ class DeviceServiceImpl extends DeviceService {
   /// 注意：
   /// - 该流与“帧刷新”无关，仅承载状态与分辨率变更；
   /// - 帧刷新由 Rust->Runner 回调直接触发。
-  Stream<bridge.SessionEvent> streamSessionEvents() =>
+  Stream<SessionEvent> streamSessionEvents() =>
       _sessionEventController.stream;
 
   @override
-  Future<bridge.SessionStats?> getCurrentSessionStats() async {
+  Future<SessionStats?> getCurrentSessionStats() async {
     final sessionId = currentSessionId;
     if (sessionId == null || sessionId.isEmpty) {
       return null;
@@ -515,3 +512,4 @@ class DeviceServiceImpl extends DeviceService {
     super.dispose();
   }
 }
+

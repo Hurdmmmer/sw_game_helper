@@ -8,12 +8,34 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'model.freezed.dart';
 
-            // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
-
+            
 
             
 
-            /// 解码器选择模式（新增配置，仅用于 V2 API）。
+            /// Android 按键事件动作（Flutter API 输入模型）。
+enum AndroidKeyEventAction {
+                    down,
+up,
+                    ;
+                    
+                }
+
+/// Android 触摸事件动作（Flutter API 输入模型）。
+enum AndroidMotionEventAction {
+                    down,
+up,
+move,
+cancel,
+pointerDown,
+pointerUp,
+hoverMove,
+hoverEnter,
+hoverExit,
+                    ;
+                    
+                }
+
+/// 解码器选择模式（新增配置，仅用于 V2 API）。
 enum DecoderMode {
                     preferHardware,
 forceHardware,
@@ -71,6 +93,33 @@ internal,
                     
                 }
 
+/// 按键事件（Flutter API 输入模型）。
+class KeyEvent  {
+                final AndroidKeyEventAction action;
+final int keycode;
+final int repeat;
+final int metastate;
+
+                const KeyEvent({required this.action ,required this.keycode ,required this.repeat ,required this.metastate ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => action.hashCode^keycode.hashCode^repeat.hashCode^metastate.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is KeyEvent &&
+                runtimeType == other.runtimeType
+                && action == other.action&& keycode == other.keycode&& repeat == other.repeat&& metastate == other.metastate;
+        
+            }
+
 /// DLL 侧日志级别。
 enum LogLevel {
                     trace,
@@ -111,6 +160,35 @@ cpuPixelBufferV2,
                     
                 }
 
+/// 滚轮事件（Flutter API 输入模型）。
+class ScrollEvent  {
+                final double x;
+final double y;
+final int width;
+final int height;
+final int hscroll;
+final int vscroll;
+
+                const ScrollEvent({required this.x ,required this.y ,required this.width ,required this.height ,required this.hscroll ,required this.vscroll ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => x.hashCode^y.hashCode^width.hashCode^height.hashCode^hscroll.hashCode^vscroll.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is ScrollEvent &&
+                runtimeType == other.runtimeType
+                && x == other.x&& y == other.y&& width == other.width&& height == other.height&& hscroll == other.hscroll&& vscroll == other.vscroll;
+        
+            }
+
 /// 创建会话所需配置（与 Flutter 桥接模型对齐）。
 class SessionConfig  {
                 /// adb 可执行文件路径。
@@ -133,7 +211,7 @@ final int controlPort;
 final String? videoEncoder;
 /// 是否在会话启动后关闭设备屏幕。
 final bool turnScreenOff;
-/// 是否保持设备常亮。
+/// 是否保持设备防休眠。
 final bool stayAwake;
 /// scrcpy 日志级别字符串（例如 `info`）。
 final String scrcpyVerbosity;
@@ -249,31 +327,34 @@ rotateScreen,
                     
                 }
 
-/// 纹理帧元信息。
-class TextureFrame  {
-                final PlatformInt64 handle;
+/// 触摸事件（Flutter API 输入模型）。
+class TouchEvent  {
+                final AndroidMotionEventAction action;
+final PlatformInt64 pointerId;
+final double x;
+final double y;
+final double pressure;
 final int width;
 final int height;
-final BigInt generation;
-final PlatformInt64 pts;
+final int buttons;
 
-                const TextureFrame({required this.handle ,required this.width ,required this.height ,required this.generation ,required this.pts ,});
+                const TouchEvent({required this.action ,required this.pointerId ,required this.x ,required this.y ,required this.pressure ,required this.width ,required this.height ,required this.buttons ,});
 
                 
                 
 
                 
         @override
-        int get hashCode => handle.hashCode^width.hashCode^height.hashCode^generation.hashCode^pts.hashCode;
+        int get hashCode => action.hashCode^pointerId.hashCode^x.hashCode^y.hashCode^pressure.hashCode^width.hashCode^height.hashCode^buttons.hashCode;
         
 
                 
         @override
         bool operator ==(Object other) =>
             identical(this, other) ||
-            other is TextureFrame &&
+            other is TouchEvent &&
                 runtimeType == other.runtimeType
-                && handle == other.handle&& width == other.width&& height == other.height&& generation == other.generation&& pts == other.pts;
+                && action == other.action&& pointerId == other.pointerId&& x == other.x&& y == other.y&& pressure == other.pressure&& width == other.width&& height == other.height&& buttons == other.buttons;
         
             }
             

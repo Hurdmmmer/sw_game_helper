@@ -7,12 +7,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'frb_generated.dart';
+import 'gh_api/flutter_api.dart';
+import 'gh_common/model.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
-import 'rust_scrcpy_api.dart';
-import 'rust_scrcpy_api/model.dart';
-import 'rust_scrcpy_api/runtime.dart';
-import 'rust_scrcpy_api/service.dart';
-import 'scrcpy/control.dart';
 
 
 
@@ -25,29 +22,11 @@ import 'scrcpy/control.dart';
                     required super.portManager,
                   });
 
-                  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_FlowMonitorPtr => wire._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitorPtr;
-
-CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntimePtr => wire._rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntimePtr;
-
-
+                  
 
                   @protected AnyhowException dco_decode_AnyhowException(dynamic raw);
 
-@protected FlowMonitor dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(dynamic raw);
-
-@protected RealSessionRuntime dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(dynamic raw);
-
-@protected RealSessionRuntime dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(dynamic raw);
-
-@protected RealSessionRuntime dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(dynamic raw);
-
-@protected FlowMonitor dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(dynamic raw);
-
-@protected RealSessionRuntime dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(dynamic raw);
-
 @protected String dco_decode_String(dynamic raw);
-
-@protected SessionRuntime dco_decode_TraitDef_SessionRuntime(dynamic raw);
 
 @protected AndroidKeyEventAction dco_decode_android_key_event_action(dynamic raw);
 
@@ -62,6 +41,8 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
 @protected SessionConfig dco_decode_box_autoadd_session_config(dynamic raw);
 
 @protected SessionConfigV2 dco_decode_box_autoadd_session_config_v_2(dynamic raw);
+
+@protected SessionEvent dco_decode_box_autoadd_session_event(dynamic raw);
 
 @protected TouchEvent dco_decode_box_autoadd_touch_event(dynamic raw);
 
@@ -85,10 +66,6 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
 
 @protected Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
-@protected List<SessionEvent> dco_decode_list_session_event(dynamic raw);
-
-@protected List<TextureFrame> dco_decode_list_texture_frame(dynamic raw);
-
 @protected LogLevel dco_decode_log_level(dynamic raw);
 
 @protected String? dco_decode_opt_String(dynamic raw);
@@ -111,8 +88,6 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
 
 @protected SystemKey dco_decode_system_key(dynamic raw);
 
-@protected TextureFrame dco_decode_texture_frame(dynamic raw);
-
 @protected TouchEvent dco_decode_touch_event(dynamic raw);
 
 @protected int dco_decode_u_16(dynamic raw);
@@ -125,21 +100,7 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
 
 @protected void dco_decode_unit(dynamic raw);
 
-@protected BigInt dco_decode_usize(dynamic raw);
-
 @protected AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
-
-@protected FlowMonitor sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(SseDeserializer deserializer);
-
-@protected RealSessionRuntime sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(SseDeserializer deserializer);
-
-@protected RealSessionRuntime sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(SseDeserializer deserializer);
-
-@protected RealSessionRuntime sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(SseDeserializer deserializer);
-
-@protected FlowMonitor sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(SseDeserializer deserializer);
-
-@protected RealSessionRuntime sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(SseDeserializer deserializer);
 
 @protected String sse_decode_String(SseDeserializer deserializer);
 
@@ -156,6 +117,8 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
 @protected SessionConfig sse_decode_box_autoadd_session_config(SseDeserializer deserializer);
 
 @protected SessionConfigV2 sse_decode_box_autoadd_session_config_v_2(SseDeserializer deserializer);
+
+@protected SessionEvent sse_decode_box_autoadd_session_event(SseDeserializer deserializer);
 
 @protected TouchEvent sse_decode_box_autoadd_touch_event(SseDeserializer deserializer);
 
@@ -179,10 +142,6 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
 
 @protected Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
-@protected List<SessionEvent> sse_decode_list_session_event(SseDeserializer deserializer);
-
-@protected List<TextureFrame> sse_decode_list_texture_frame(SseDeserializer deserializer);
-
 @protected LogLevel sse_decode_log_level(SseDeserializer deserializer);
 
 @protected String? sse_decode_opt_String(SseDeserializer deserializer);
@@ -205,8 +164,6 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
 
 @protected SystemKey sse_decode_system_key(SseDeserializer deserializer);
 
-@protected TextureFrame sse_decode_texture_frame(SseDeserializer deserializer);
-
 @protected TouchEvent sse_decode_touch_event(SseDeserializer deserializer);
 
 @protected int sse_decode_u_16(SseDeserializer deserializer);
@@ -219,21 +176,7 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
 
 @protected void sse_decode_unit(SseDeserializer deserializer);
 
-@protected BigInt sse_decode_usize(SseDeserializer deserializer);
-
 @protected void sse_encode_AnyhowException(AnyhowException self, SseSerializer serializer);
-
-@protected void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(FlowMonitor self, SseSerializer serializer);
-
-@protected void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(RealSessionRuntime self, SseSerializer serializer);
-
-@protected void sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(RealSessionRuntime self, SseSerializer serializer);
-
-@protected void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(RealSessionRuntime self, SseSerializer serializer);
-
-@protected void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(FlowMonitor self, SseSerializer serializer);
-
-@protected void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(RealSessionRuntime self, SseSerializer serializer);
 
 @protected void sse_encode_String(String self, SseSerializer serializer);
 
@@ -250,6 +193,8 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
 @protected void sse_encode_box_autoadd_session_config(SessionConfig self, SseSerializer serializer);
 
 @protected void sse_encode_box_autoadd_session_config_v_2(SessionConfigV2 self, SseSerializer serializer);
+
+@protected void sse_encode_box_autoadd_session_event(SessionEvent self, SseSerializer serializer);
 
 @protected void sse_encode_box_autoadd_touch_event(TouchEvent self, SseSerializer serializer);
 
@@ -273,10 +218,6 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
 
 @protected void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer);
 
-@protected void sse_encode_list_session_event(List<SessionEvent> self, SseSerializer serializer);
-
-@protected void sse_encode_list_texture_frame(List<TextureFrame> self, SseSerializer serializer);
-
 @protected void sse_encode_log_level(LogLevel self, SseSerializer serializer);
 
 @protected void sse_encode_opt_String(String? self, SseSerializer serializer);
@@ -299,8 +240,6 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
 
 @protected void sse_encode_system_key(SystemKey self, SseSerializer serializer);
 
-@protected void sse_encode_texture_frame(TextureFrame self, SseSerializer serializer);
-
 @protected void sse_encode_touch_event(TouchEvent self, SseSerializer serializer);
 
 @protected void sse_encode_u_16(int self, SseSerializer serializer);
@@ -312,8 +251,6 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
 @protected void sse_encode_u_8(int self, SseSerializer serializer);
 
 @protected void sse_encode_unit(void self, SseSerializer serializer);
-
-@protected void sse_encode_usize(BigInt self, SseSerializer serializer);
                 }
                 
 
@@ -334,50 +271,6 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
             RustLibWire(ffi.DynamicLibrary dynamicLibrary)
                 : _lookup = dynamicLibrary.lookup;
 
-            
-            void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(
-              ffi.Pointer<ffi.Void> ptr,
-            ) {
-              return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(
-                ptr,
-              );
-            }
-
-            late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitorPtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>('frbgen_sw_game_helper_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor');
-            late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor = _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitorPtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
-            
-            void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(
-              ffi.Pointer<ffi.Void> ptr,
-            ) {
-              return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(
-                ptr,
-              );
-            }
-
-            late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitorPtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>('frbgen_sw_game_helper_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor');
-            late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor = _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitorPtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
-            
-            void rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(
-              ffi.Pointer<ffi.Void> ptr,
-            ) {
-              return _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(
-                ptr,
-              );
-            }
-
-            late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntimePtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>('frbgen_sw_game_helper_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime');
-            late final _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime = _rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntimePtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
-            
-            void rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(
-              ffi.Pointer<ffi.Void> ptr,
-            ) {
-              return _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(
-                ptr,
-              );
-            }
-
-            late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntimePtr = _lookup<ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Void>)>>('frbgen_sw_game_helper_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime');
-            late final _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime = _rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntimePtr.asFunction<void Function(ffi.Pointer<ffi.Void>)>();
             
         }
         

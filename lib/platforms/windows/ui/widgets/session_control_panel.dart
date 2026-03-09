@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sw_game_helper/enums/connection_mode.dart';
 import 'package:sw_game_helper/models/device_info.dart';
-import 'package:sw_game_helper/platforms/windows/bridge_generated/rust_scrcpy_api.dart';
+import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
 import 'package:sw_game_helper/platforms/windows/providers/device_provider.dart';
 import 'package:sw_game_helper/platforms/windows/service/device_service.dart';
 import 'package:sw_game_helper/platforms/windows/ui/widgets/pill_toggle.dart';
@@ -416,3 +416,8 @@ class _WifiSettingsPanelState extends ConsumerState<WifiSettingsPanel> {
     );
   }
 }
+
+
+
+
+

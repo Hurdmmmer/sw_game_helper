@@ -2,8 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sw_game_helper/enums/connection_status.dart';
-import 'package:sw_game_helper/platforms/windows/bridge_generated/rust_scrcpy_api.dart'
-    as bridge;
+import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
 import 'package:sw_game_helper/platforms/windows/providers/device_provider.dart';
 import 'package:sw_game_helper/platforms/windows/service/texture_bridge_client.dart';
 import 'package:sw_game_helper/platforms/windows/ui/widgets/touch_input_controller.dart';
@@ -39,7 +38,7 @@ class _VideoViewState extends ConsumerState<VideoView>
   StreamSubscription<ConnectionStatus>? _statusSub;
 
   /// 会话事件订阅。
-  StreamSubscription<bridge.SessionEvent>? _eventSub;
+  StreamSubscription<SessionEvent>? _eventSub;
 
   /// FPS 定时器。
   Timer? _fpsTimer;
@@ -563,3 +562,8 @@ class _VideoViewState extends ConsumerState<VideoView>
   @override
   String get touchDebugLabel => 'VideoView(${widget.backend.name})';
 }
+
+
+
+
+

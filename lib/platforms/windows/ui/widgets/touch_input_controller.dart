@@ -3,8 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sw_game_helper/platforms/windows/bridge_generated/scrcpy/control.dart'
-    as control;
+import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart' as control;
 import 'package:sw_game_helper/platforms/windows/providers/device_provider.dart';
 import 'package:sw_game_helper/utils/logger_service.dart';
 
@@ -591,3 +590,5 @@ mixin VideoTouchMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     Log.e('$touchDebugLabel send touch failed: $e', e, st);
   }
 }
+
+

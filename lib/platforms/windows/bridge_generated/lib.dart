@@ -12,8 +12,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
             
 
             
-                // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<extern "C" fn (user_data : * mut c_void , frame_id : u64 , data : * const u8 , data_len : usize , width : u32 , height : u32 , stride : u32 , pixel_format : u32 , generation : u64 , pts : i64)>>
-                abstract class ExternCFnUserDataMutCVoidFrameIdU64DataConstU8DataLenUsizeWidthU32HeightU32StrideU32PixelFormatU32GenerationU64PtsI64 implements RustOpaqueInterface {
+                // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OrientationMode>>
+                abstract class OrientationMode implements RustOpaqueInterface {
                     
 
                     
@@ -21,8 +21,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
                 
 
 
-                // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<extern "C" fn (user_data : * mut c_void , handle : i64 , width : u32 , height : u32 , generation : u64 , pts : i64)>>
-                abstract class ExternCFnUserDataMutCVoidHandleI64WidthU32HeightU32GenerationU64PtsI64 implements RustOpaqueInterface {
+                // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<SessionConfig>>
+                abstract class SessionConfig implements RustOpaqueInterface {
                     
 
                     
@@ -30,8 +30,17 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
                 
 
 
-                // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<extern "C" fn (user_data : * mut c_void , session_id : * const u8 , session_id_len : usize , event_json : * const u8 , event_json_len : usize)>>
-                abstract class ExternCFnUserDataMutCVoidSessionIdConstU8SessionIdLenUsizeEventJsonConstU8EventJsonLenUsize implements RustOpaqueInterface {
+                // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<SessionEvent>>
+                abstract class SessionEvent implements RustOpaqueInterface {
+                    
+
+                    
+                }
+                
+
+
+                // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<SystemKey>>
+                abstract class SystemKey implements RustOpaqueInterface {
                     
 
                     

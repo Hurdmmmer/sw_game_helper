@@ -3,10 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
-import 'package:sw_game_helper/platforms/windows/bridge_generated/rust_scrcpy_api.dart'
-    as bridge;
-import 'package:sw_game_helper/platforms/windows/bridge_generated/scrcpy/control.dart'
-    as control;
+import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
+import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_api/flutter_api.dart' as flutter_api;
+
 import 'package:sw_game_helper/utils/logger_service.dart';
 
 /// Windows 下第三方依赖路径解析。
@@ -41,21 +40,21 @@ class ScrcpyRustThirdPartyApi {
   /// 使用方式：
   /// `await ScrcpyRustThirdPartyApi.instance.initLogger(maxLevel: bridge.LogLevel.info);`
   Future<void> initLogger({
-    bridge.LogLevel maxLevel = bridge.LogLevel.info,
+    LogLevel maxLevel = LogLevel.info,
   }) async {
-    await bridge.setupLogger(maxLevel: maxLevel);
+    await flutter_api.setupLogger(maxLevel: maxLevel);
   }
 
   /// 先列设备，再逐个补全详情（型号/版本）。
-  Future<List<bridge.DeviceInfo>> listDevices() async {
-    final devices = await bridge.listDevices(adbPath: ThirdPartyPaths.adb);
+  Future<List<DeviceInfo>> listDevices() async {
+    final devices = await flutter_api.listDevices(adbPath: ThirdPartyPaths.adb);
     if (devices.isEmpty) {
-      return const <bridge.DeviceInfo>[];
+      return const <DeviceInfo>[];
     }
 
     final detailFutures = devices.map((device) async {
       try {
-        return await bridge.getDeviceInfo(
+        return await flutter_api.getDeviceInfo(
           adbPath: ThirdPartyPaths.adb,
           deviceId: device.deviceId,
         );
@@ -81,11 +80,11 @@ class ScrcpyRustThirdPartyApi {
   /// - Rust 侧会在建链完成后执行“最佳努力”熄屏，不会因为熄屏失败而中断会话。
   Future<String> connectV2({
     required String deviceId,
-    required bridge.RenderPipelineMode renderPipelineMode,
-    required bridge.DecoderMode decoderMode,
+    required RenderPipelineMode renderPipelineMode,
+    required DecoderMode decoderMode,
     bool turnScreenOff = false,
   }) async {
-    final base = bridge.SessionConfig(
+    final base = SessionConfig(
       adbPath: ThirdPartyPaths.adb,
       serverPath: ThirdPartyPaths.scrcpyServer,
       deviceId: deviceId,
@@ -104,14 +103,14 @@ class ScrcpyRustThirdPartyApi {
       intraRefreshPeriod: 1
     );
 
-    final config = bridge.SessionConfigV2(
+    final config = SessionConfigV2(
       base: base,
       renderPipelineMode: renderPipelineMode,
       decoderMode: decoderMode,
     );
 
-    final sessionId = await bridge.createSessionV2(config: config);
-    await bridge.startSession(sessionId: sessionId);
+    final sessionId = await flutter_api.createSessionV2(config: config);
+    await flutter_api.startSession(sessionId: sessionId);
     return sessionId;
   }
 
@@ -120,21 +119,21 @@ class ScrcpyRustThirdPartyApi {
     final sw = Stopwatch()..start();
     Log.i('disconnect start: session=$sessionId');
     try {
-      await bridge.stopSession(sessionId: sessionId);
+      await flutter_api.stopSession(sessionId: sessionId);
       Log.i('disconnect stop done: session=$sessionId cost=${sw.elapsedMilliseconds}ms');
     } catch (_) {
       Log.w('disconnect stop failed (ignored): session=$sessionId');
     }
-    await bridge.disposeSession(sessionId: sessionId);
+    await flutter_api.disposeSession(sessionId: sessionId);
     Log.i('disconnect dispose done: session=$sessionId cost=${sw.elapsedMilliseconds}ms');
   }
 
   /// 发送触控事件到 Rust 当前会话。
   Future<void> sendTouch(
     String sessionId,
-    control.TouchEvent event,
+    TouchEvent event,
   ) async {
-    await bridge.sendTouch(sessionId: sessionId, event: event);
+    await flutter_api.sendTouch(sessionId: sessionId, event: event);
   }
 
   /// 会话事件流（回调驱动，无轮询）。
@@ -143,33 +142,33 @@ class ScrcpyRustThirdPartyApi {
   /// 1. Rust runtime 触发 `rs_register_session_event_callback` 回调；
   /// 2. Windows Runner 把事件转发到 `dxgi_texture_bridge.onSessionEvent`；
   /// 3. 这里解析 JSON，再按 sessionId 分发给订阅者。
-  Stream<bridge.SessionEvent> streamSessionEvents(String sessionId) {
+  Stream<SessionEvent> streamSessionEvents(String sessionId) {
     _ensureSessionEventBridgeBound();
     return _sessionEventController.stream
         .where((item) => item.sessionId == sessionId)
         .map((item) => item.event);
   }
 
-  Future<bridge.SessionStats> getSessionStats(String sessionId) {
-    return bridge.getSessionStats(sessionId: sessionId);
+  Future<SessionStats> getSessionStats(String sessionId) {
+    return flutter_api.getSessionStats(sessionId: sessionId);
   }
 
   Future<void> setOrientationMode({
     required String sessionId,
-    required bridge.OrientationMode mode,
+    required OrientationMode mode,
   }) async {
-    await bridge.setOrientationMode(sessionId: sessionId, mode: mode);
+    await flutter_api.setOrientationMode(sessionId: sessionId, mode: mode);
   }
 
   Future<void> requestIdr(String sessionId) async {
-    await bridge.requestIdr(sessionId: sessionId);
+    await flutter_api.requestIdr(sessionId: sessionId);
   }
 
   /// 在同一个 sessionId 上重启运行时（不销毁会话对象）。
   ///
   /// 适用于“运行时异常后的快速恢复”，可避免 create/dispose 带来的额外开销。
   Future<void> restartSession(String sessionId) async {
-    await bridge.startSession(sessionId: sessionId);
+    await flutter_api.startSession(sessionId: sessionId);
   }
 
   /// 只初始化一次：注册 MethodChannel 回调 + 通知 Runner 绑定 Rust 回调。
@@ -186,6 +185,7 @@ class ScrcpyRustThirdPartyApi {
       ) {
         Log.w('绑定 SessionEvent 回调失败: $e');
         Log.e('绑定 SessionEvent 回调异常堆栈', e, st);
+        return false;
       }),
     );
   }
@@ -221,15 +221,15 @@ class ScrcpyRustThirdPartyApi {
   }
 
   /// 将 Rust 侧 JSON 事件解码为 FRB 生成的 `SessionEvent`。
-  bridge.SessionEvent? _parseSessionEvent(String jsonText) {
+  SessionEvent? _parseSessionEvent(String jsonText) {
     final decoded = jsonDecode(jsonText);
     if (decoded is String) {
-      if (decoded == 'Starting') return const bridge.SessionEvent.starting();
-      if (decoded == 'Running') return const bridge.SessionEvent.running();
+      if (decoded == 'Starting') return const SessionEvent.starting();
+      if (decoded == 'Running') return const SessionEvent.running();
       if (decoded == 'Reconnecting') {
-        return const bridge.SessionEvent.reconnecting();
+        return const SessionEvent.reconnecting();
       }
-      if (decoded == 'Stopped') return const bridge.SessionEvent.stopped();
+      if (decoded == 'Stopped') return const SessionEvent.stopped();
       return null;
     }
     if (decoded is! Map) {
@@ -238,7 +238,7 @@ class ScrcpyRustThirdPartyApi {
     if (decoded.containsKey('Error')) {
       final payload = decoded['Error'];
       if (payload is! Map) return null;
-      return bridge.SessionEvent.error(
+      return SessionEvent.error(
         code: _parseErrorCode(payload['code']?.toString()),
         message: payload['message']?.toString() ?? '',
       );
@@ -246,7 +246,7 @@ class ScrcpyRustThirdPartyApi {
     if (decoded.containsKey('OrientationChanged')) {
       final payload = decoded['OrientationChanged'];
       if (payload is! Map) return null;
-      return bridge.SessionEvent.orientationChanged(
+      return SessionEvent.orientationChanged(
         mode: _parseOrientationMode(payload['mode']?.toString()),
         source: _parseOrientationSource(payload['source']?.toString()),
       );
@@ -254,7 +254,7 @@ class ScrcpyRustThirdPartyApi {
     if (decoded.containsKey('ResolutionChanged')) {
       final payload = decoded['ResolutionChanged'];
       if (payload is! Map) return null;
-      return bridge.SessionEvent.resolutionChanged(
+      return SessionEvent.resolutionChanged(
         width: _toInt(payload['width']),
         height: _toInt(payload['height']),
         newHandle: _toInt(payload['new_handle']),
@@ -264,31 +264,31 @@ class ScrcpyRustThirdPartyApi {
     return null;
   }
 
-  bridge.ErrorCode _parseErrorCode(String? text) {
+  ErrorCode _parseErrorCode(String? text) {
     return switch (text) {
-      'InvalidSession' => bridge.ErrorCode.invalidSession,
-      'AlreadyRunning' => bridge.ErrorCode.alreadyRunning,
-      'NotRunning' => bridge.ErrorCode.notRunning,
-      'DeviceDisconnected' => bridge.ErrorCode.deviceDisconnected,
-      'DecodeFailed' => bridge.ErrorCode.decodeFailed,
-      'TextureFailed' => bridge.ErrorCode.textureFailed,
-      'ControlFailed' => bridge.ErrorCode.controlFailed,
-      _ => bridge.ErrorCode.internal,
+      'InvalidSession' => ErrorCode.invalidSession,
+      'AlreadyRunning' => ErrorCode.alreadyRunning,
+      'NotRunning' => ErrorCode.notRunning,
+      'DeviceDisconnected' => ErrorCode.deviceDisconnected,
+      'DecodeFailed' => ErrorCode.decodeFailed,
+      'TextureFailed' => ErrorCode.textureFailed,
+      'ControlFailed' => ErrorCode.controlFailed,
+      _ => ErrorCode.internal,
     };
   }
 
-  bridge.OrientationMode _parseOrientationMode(String? text) {
+  OrientationMode _parseOrientationMode(String? text) {
     return switch (text) {
-      'Portrait' => bridge.OrientationMode.portrait,
-      'Landscape' => bridge.OrientationMode.landscape,
-      _ => bridge.OrientationMode.auto,
+      'Portrait' => OrientationMode.portrait,
+      'Landscape' => OrientationMode.landscape,
+      _ => OrientationMode.auto,
     };
   }
 
-  bridge.OrientationChangeSource _parseOrientationSource(String? text) {
+  OrientationChangeSource _parseOrientationSource(String? text) {
     return switch (text) {
-      'ManualApi' => bridge.OrientationChangeSource.manualApi,
-      _ => bridge.OrientationChangeSource.autoSensor,
+      'ManualApi' => OrientationChangeSource.manualApi,
+      _ => OrientationChangeSource.autoSensor,
     };
   }
 
@@ -302,7 +302,9 @@ class ScrcpyRustThirdPartyApi {
 /// 事件分发内部结构：保留 sessionId 方便做单会话过滤。
 class _SessionEventEnvelope {
   final String sessionId;
-  final bridge.SessionEvent event;
+  final SessionEvent event;
 
   const _SessionEventEnvelope({required this.sessionId, required this.event});
 }
+
+

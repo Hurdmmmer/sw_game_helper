@@ -7,12 +7,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
 import 'frb_generated.io.dart' if (dart.library.js_interop) 'frb_generated.web.dart';
+import 'gh_api/flutter_api.dart';
+import 'gh_common/model.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-import 'rust_scrcpy_api.dart';
-import 'rust_scrcpy_api/model.dart';
-import 'rust_scrcpy_api/runtime.dart';
-import 'rust_scrcpy_api/service.dart';
-import 'scrcpy/control.dart';
 
 
                 /// Main entrypoint of the Rust API
@@ -71,7 +68,7 @@ import 'scrcpy/control.dart';
                   String get codegenVersion => '2.11.1';
 
                   @override
-                  int get rustContentHash => -1750544088;
+                  int get rustContentHash => 2129575494;
 
                   static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
                     stem: 'rust_scrcpy',
@@ -82,115 +79,41 @@ import 'scrcpy/control.dart';
                 
 
                 abstract class RustLibApi extends BaseApi {
-                  Future<FlowMonitor> crateRustScrcpyApiRuntimeFlowMonitorDefault();
+                  Future<String> crateGhApiFlutterApiCreateSession({required SessionConfig config });
 
-Future<bool> crateRustScrcpyApiRuntimeRealSessionRuntimeIsRunning({required RealSessionRuntime that });
+Future<String> crateGhApiFlutterApiCreateSessionV2({required SessionConfigV2 config });
 
-Future<List<SessionEvent>> crateRustScrcpyApiRuntimeRealSessionRuntimePollSessionEvents({required RealSessionRuntime that });
+Future<void> crateGhApiFlutterApiDisposeSession({required String sessionId });
 
-Future<List<TextureFrame>> crateRustScrcpyApiRuntimeRealSessionRuntimePollTextureFrames({required RealSessionRuntime that });
+Future<DeviceInfo> crateGhApiFlutterApiGetDeviceInfo({required String adbPath , required String deviceId });
 
-Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeRequestIdr({required RealSessionRuntime that });
+Future<SessionStats> crateGhApiFlutterApiGetSessionStats({required String sessionId });
 
-Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSendKey({required RealSessionRuntime that , required KeyEvent event });
+Future<SessionEvent> crateGhApiFlutterApiKeepSessionEventTypeForFlutter({required SessionEvent event });
 
-Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSendScroll({required RealSessionRuntime that , required ScrollEvent event });
+Future<List<DeviceInfo>> crateGhApiFlutterApiListDevices({required String adbPath });
 
-Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSendSystemKey({required RealSessionRuntime that , required SystemKey key });
+Future<void> crateGhApiFlutterApiRequestIdr({required String sessionId });
 
-Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSendText({required RealSessionRuntime that , required String text });
+Future<void> crateGhApiFlutterApiSendKey({required String sessionId , required KeyEvent event });
 
-Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSendTouch({required RealSessionRuntime that , required TouchEvent event });
+Future<void> crateGhApiFlutterApiSendScroll({required String sessionId , required ScrollEvent event });
 
-Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSetClipboard({required RealSessionRuntime that , required String text , required bool paste });
+Future<void> crateGhApiFlutterApiSendSystemKey({required String sessionId , required SystemKey key });
 
-Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSetOrientationMode({required RealSessionRuntime that , required OrientationMode mode });
+Future<void> crateGhApiFlutterApiSendText({required String sessionId , required String text });
 
-Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeStart({required RealSessionRuntime that });
+Future<void> crateGhApiFlutterApiSendTouch({required String sessionId , required TouchEvent event });
 
-Future<SessionStats> crateRustScrcpyApiRuntimeRealSessionRuntimeStats({required RealSessionRuntime that });
+Future<void> crateGhApiFlutterApiSetClipboard({required String sessionId , required String text , required bool paste });
 
-Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeStop({required RealSessionRuntime that });
+Future<void> crateGhApiFlutterApiSetOrientationMode({required String sessionId , required OrientationMode mode });
 
-Future<String> crateRustScrcpyApiCreateSession({required SessionConfig config });
+Future<void> crateGhApiFlutterApiSetupLogger({required LogLevel maxLevel });
 
-Future<String> crateRustScrcpyApiServiceCreateSession({required SessionConfig config });
+Future<void> crateGhApiFlutterApiStartSession({required String sessionId });
 
-Future<String> crateRustScrcpyApiCreateSessionV2({required SessionConfigV2 config });
-
-Future<String> crateRustScrcpyApiServiceCreateSessionV2({required SessionConfigV2 config });
-
-Future<void> crateRustScrcpyApiDisposeSession({required String sessionId });
-
-Future<void> crateRustScrcpyApiServiceDisposeSession({required String sessionId });
-
-Future<DeviceInfo> crateRustScrcpyApiGetDeviceInfo({required String adbPath , required String deviceId });
-
-Future<DeviceInfo> crateRustScrcpyApiServiceGetDeviceInfo({required String adbPath , required String deviceId });
-
-Future<SessionStats> crateRustScrcpyApiGetSessionStats({required String sessionId });
-
-Future<SessionStats> crateRustScrcpyApiServiceGetSessionStats({required String sessionId });
-
-Future<List<DeviceInfo>> crateRustScrcpyApiListDevices({required String adbPath });
-
-Future<List<DeviceInfo>> crateRustScrcpyApiServiceListDevices({required String adbPath });
-
-Future<void> crateRustScrcpyApiRequestIdr({required String sessionId });
-
-Future<void> crateRustScrcpyApiServiceRequestIdr({required String sessionId });
-
-Future<void> crateRustScrcpyApiSendKey({required String sessionId , required KeyEvent event });
-
-Future<void> crateRustScrcpyApiServiceSendKey({required String sessionId , required KeyEvent event });
-
-Future<void> crateRustScrcpyApiSendScroll({required String sessionId , required ScrollEvent event });
-
-Future<void> crateRustScrcpyApiServiceSendScroll({required String sessionId , required ScrollEvent event });
-
-Future<void> crateRustScrcpyApiSendSystemKey({required String sessionId , required SystemKey key });
-
-Future<void> crateRustScrcpyApiServiceSendSystemKey({required String sessionId , required SystemKey key });
-
-Future<void> crateRustScrcpyApiSendText({required String sessionId , required String text });
-
-Future<void> crateRustScrcpyApiServiceSendText({required String sessionId , required String text });
-
-Future<void> crateRustScrcpyApiSendTouch({required String sessionId , required TouchEvent event });
-
-Future<void> crateRustScrcpyApiServiceSendTouch({required String sessionId , required TouchEvent event });
-
-Future<void> crateRustScrcpyApiSetClipboard({required String sessionId , required String text , required bool paste });
-
-Future<void> crateRustScrcpyApiServiceSetClipboard({required String sessionId , required String text , required bool paste });
-
-Future<void> crateRustScrcpyApiSetOrientationMode({required String sessionId , required OrientationMode mode });
-
-Future<void> crateRustScrcpyApiServiceSetOrientationMode({required String sessionId , required OrientationMode mode });
-
-Future<void> crateRustScrcpyApiSetupLogger({required LogLevel maxLevel });
-
-Future<void> crateRustScrcpyApiServiceSetupLogger({required LogLevel maxLevel });
-
-Future<void> crateRustScrcpyApiStartSession({required String sessionId });
-
-Future<void> crateRustScrcpyApiServiceStartSession({required String sessionId });
-
-Future<void> crateRustScrcpyApiStopSession({required String sessionId });
-
-Future<void> crateRustScrcpyApiServiceStopSession({required String sessionId });
-
-RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_FlowMonitor;
-
-RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_FlowMonitor;
-
-CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_FlowMonitorPtr;
-
-RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_RealSessionRuntime;
-
-RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_RealSessionRuntime;
-
-CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntimePtr;
+Future<void> crateGhApiFlutterApiStopSession({required String sessionId });
 
 
                 }
@@ -204,188 +127,186 @@ CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_RealSessionRuntime
                     required super.portManager,
                   });
 
-                  @override Future<FlowMonitor> crateRustScrcpyApiRuntimeFlowMonitorDefault()  { return handler.executeNormal(NormalTask(
+                  @override Future<String> crateGhApiFlutterApiCreateSession({required SessionConfig config })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_box_autoadd_session_config(config, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1, port: port_);
             
             },
             codec: 
         SseCodec(
-          decodeSuccessData: sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor,
-          decodeErrorData: null,
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeFlowMonitorDefaultConstMeta,
-            argValues: [],
+            constMeta: kCrateGhApiFlutterApiCreateSessionConstMeta,
+            argValues: [config],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeFlowMonitorDefaultConstMeta => const TaskConstMeta(
-            debugName: "FlowMonitor_default",
-            argNames: [],
+        TaskConstMeta get kCrateGhApiFlutterApiCreateSessionConstMeta => const TaskConstMeta(
+            debugName: "create_session",
+            argNames: ["config"],
         );
         
 
-@override Future<bool> crateRustScrcpyApiRuntimeRealSessionRuntimeIsRunning({required RealSessionRuntime that })  { return handler.executeNormal(NormalTask(
+@override Future<String> crateGhApiFlutterApiCreateSessionV2({required SessionConfigV2 config })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_box_autoadd_session_config_v_2(config, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2, port: port_);
             
             },
             codec: 
         SseCodec(
-          decodeSuccessData: sse_decode_bool,
-          decodeErrorData: null,
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimeIsRunningConstMeta,
-            argValues: [that],
+            constMeta: kCrateGhApiFlutterApiCreateSessionV2ConstMeta,
+            argValues: [config],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimeIsRunningConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_is_running",
-            argNames: ["that"],
+        TaskConstMeta get kCrateGhApiFlutterApiCreateSessionV2ConstMeta => const TaskConstMeta(
+            debugName: "create_session_v2",
+            argNames: ["config"],
         );
         
 
-@override Future<List<SessionEvent>> crateRustScrcpyApiRuntimeRealSessionRuntimePollSessionEvents({required RealSessionRuntime that })  { return handler.executeNormal(NormalTask(
+@override Future<void> crateGhApiFlutterApiDisposeSession({required String sessionId })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3, port: port_);
             
             },
             codec: 
         SseCodec(
-          decodeSuccessData: sse_decode_list_session_event,
+          decodeSuccessData: sse_decode_unit,
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimePollSessionEventsConstMeta,
-            argValues: [that],
+            constMeta: kCrateGhApiFlutterApiDisposeSessionConstMeta,
+            argValues: [sessionId],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimePollSessionEventsConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_poll_session_events",
-            argNames: ["that"],
+        TaskConstMeta get kCrateGhApiFlutterApiDisposeSessionConstMeta => const TaskConstMeta(
+            debugName: "dispose_session",
+            argNames: ["sessionId"],
         );
         
 
-@override Future<List<TextureFrame>> crateRustScrcpyApiRuntimeRealSessionRuntimePollTextureFrames({required RealSessionRuntime that })  { return handler.executeNormal(NormalTask(
+@override Future<DeviceInfo> crateGhApiFlutterApiGetDeviceInfo({required String adbPath , required String deviceId })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(adbPath, serializer);
+sse_encode_String(deviceId, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 4, port: port_);
             
             },
             codec: 
         SseCodec(
-          decodeSuccessData: sse_decode_list_texture_frame,
+          decodeSuccessData: sse_decode_device_info,
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimePollTextureFramesConstMeta,
-            argValues: [that],
+            constMeta: kCrateGhApiFlutterApiGetDeviceInfoConstMeta,
+            argValues: [adbPath, deviceId],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimePollTextureFramesConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_poll_texture_frames",
-            argNames: ["that"],
+        TaskConstMeta get kCrateGhApiFlutterApiGetDeviceInfoConstMeta => const TaskConstMeta(
+            debugName: "get_device_info",
+            argNames: ["adbPath", "deviceId"],
         );
         
 
-@override Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeRequestIdr({required RealSessionRuntime that })  { return handler.executeNormal(NormalTask(
+@override Future<SessionStats> crateGhApiFlutterApiGetSessionStats({required String sessionId })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 5, port: port_);
             
             },
             codec: 
         SseCodec(
-          decodeSuccessData: sse_decode_unit,
+          decodeSuccessData: sse_decode_session_stats,
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimeRequestIdrConstMeta,
-            argValues: [that],
+            constMeta: kCrateGhApiFlutterApiGetSessionStatsConstMeta,
+            argValues: [sessionId],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimeRequestIdrConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_request_idr",
-            argNames: ["that"],
+        TaskConstMeta get kCrateGhApiFlutterApiGetSessionStatsConstMeta => const TaskConstMeta(
+            debugName: "get_session_stats",
+            argNames: ["sessionId"],
         );
         
 
-@override Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSendKey({required RealSessionRuntime that , required KeyEvent event })  { return handler.executeNormal(NormalTask(
+@override Future<SessionEvent> crateGhApiFlutterApiKeepSessionEventTypeForFlutter({required SessionEvent event })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
-sse_encode_box_autoadd_key_event(event, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_box_autoadd_session_event(event, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6, port: port_);
             
             },
             codec: 
         SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
+          decodeSuccessData: sse_decode_session_event,
+          decodeErrorData: null,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimeSendKeyConstMeta,
-            argValues: [that, event],
+            constMeta: kCrateGhApiFlutterApiKeepSessionEventTypeForFlutterConstMeta,
+            argValues: [event],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimeSendKeyConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_send_key",
-            argNames: ["that", "event"],
+        TaskConstMeta get kCrateGhApiFlutterApiKeepSessionEventTypeForFlutterConstMeta => const TaskConstMeta(
+            debugName: "keep_session_event_type_for_flutter",
+            argNames: ["event"],
         );
         
 
-@override Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSendScroll({required RealSessionRuntime that , required ScrollEvent event })  { return handler.executeNormal(NormalTask(
+@override Future<List<DeviceInfo>> crateGhApiFlutterApiListDevices({required String adbPath })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
-sse_encode_box_autoadd_scroll_event(event, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(adbPath, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7, port: port_);
             
             },
             codec: 
         SseCodec(
-          decodeSuccessData: sse_decode_unit,
+          decodeSuccessData: sse_decode_list_device_info,
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimeSendScrollConstMeta,
-            argValues: [that, event],
+            constMeta: kCrateGhApiFlutterApiListDevicesConstMeta,
+            argValues: [adbPath],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimeSendScrollConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_send_scroll",
-            argNames: ["that", "event"],
+        TaskConstMeta get kCrateGhApiFlutterApiListDevicesConstMeta => const TaskConstMeta(
+            debugName: "list_devices",
+            argNames: ["adbPath"],
         );
         
 
-@override Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSendSystemKey({required RealSessionRuntime that , required SystemKey key })  { return handler.executeNormal(NormalTask(
+@override Future<void> crateGhApiFlutterApiRequestIdr({required String sessionId })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
-sse_encode_system_key(key, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8, port: port_);
             
             },
@@ -395,23 +316,23 @@ sse_encode_system_key(key, serializer);
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimeSendSystemKeyConstMeta,
-            argValues: [that, key],
+            constMeta: kCrateGhApiFlutterApiRequestIdrConstMeta,
+            argValues: [sessionId],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimeSendSystemKeyConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_send_system_key",
-            argNames: ["that", "key"],
+        TaskConstMeta get kCrateGhApiFlutterApiRequestIdrConstMeta => const TaskConstMeta(
+            debugName: "request_idr",
+            argNames: ["sessionId"],
         );
         
 
-@override Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSendText({required RealSessionRuntime that , required String text })  { return handler.executeNormal(NormalTask(
+@override Future<void> crateGhApiFlutterApiSendKey({required String sessionId , required KeyEvent event })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
-sse_encode_String(text, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
+sse_encode_box_autoadd_key_event(event, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9, port: port_);
             
             },
@@ -421,23 +342,23 @@ sse_encode_String(text, serializer);
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimeSendTextConstMeta,
-            argValues: [that, text],
+            constMeta: kCrateGhApiFlutterApiSendKeyConstMeta,
+            argValues: [sessionId, event],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimeSendTextConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_send_text",
-            argNames: ["that", "text"],
+        TaskConstMeta get kCrateGhApiFlutterApiSendKeyConstMeta => const TaskConstMeta(
+            debugName: "send_key",
+            argNames: ["sessionId", "event"],
         );
         
 
-@override Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSendTouch({required RealSessionRuntime that , required TouchEvent event })  { return handler.executeNormal(NormalTask(
+@override Future<void> crateGhApiFlutterApiSendScroll({required String sessionId , required ScrollEvent event })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
-sse_encode_box_autoadd_touch_event(event, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
+sse_encode_box_autoadd_scroll_event(event, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10, port: port_);
             
             },
@@ -447,24 +368,23 @@ sse_encode_box_autoadd_touch_event(event, serializer);
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimeSendTouchConstMeta,
-            argValues: [that, event],
+            constMeta: kCrateGhApiFlutterApiSendScrollConstMeta,
+            argValues: [sessionId, event],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimeSendTouchConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_send_touch",
-            argNames: ["that", "event"],
+        TaskConstMeta get kCrateGhApiFlutterApiSendScrollConstMeta => const TaskConstMeta(
+            debugName: "send_scroll",
+            argNames: ["sessionId", "event"],
         );
         
 
-@override Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSetClipboard({required RealSessionRuntime that , required String text , required bool paste })  { return handler.executeNormal(NormalTask(
+@override Future<void> crateGhApiFlutterApiSendSystemKey({required String sessionId , required SystemKey key })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
-sse_encode_String(text, serializer);
-sse_encode_bool(paste, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
+sse_encode_system_key(key, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11, port: port_);
             
             },
@@ -474,23 +394,23 @@ sse_encode_bool(paste, serializer);
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimeSetClipboardConstMeta,
-            argValues: [that, text, paste],
+            constMeta: kCrateGhApiFlutterApiSendSystemKeyConstMeta,
+            argValues: [sessionId, key],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimeSetClipboardConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_set_clipboard",
-            argNames: ["that", "text", "paste"],
+        TaskConstMeta get kCrateGhApiFlutterApiSendSystemKeyConstMeta => const TaskConstMeta(
+            debugName: "send_system_key",
+            argNames: ["sessionId", "key"],
         );
         
 
-@override Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeSetOrientationMode({required RealSessionRuntime that , required OrientationMode mode })  { return handler.executeNormal(NormalTask(
+@override Future<void> crateGhApiFlutterApiSendText({required String sessionId , required String text })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
-sse_encode_orientation_mode(mode, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
+sse_encode_String(text, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12, port: port_);
             
             },
@@ -500,22 +420,23 @@ sse_encode_orientation_mode(mode, serializer);
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimeSetOrientationModeConstMeta,
-            argValues: [that, mode],
+            constMeta: kCrateGhApiFlutterApiSendTextConstMeta,
+            argValues: [sessionId, text],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimeSetOrientationModeConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_set_orientation_mode",
-            argNames: ["that", "mode"],
+        TaskConstMeta get kCrateGhApiFlutterApiSendTextConstMeta => const TaskConstMeta(
+            debugName: "send_text",
+            argNames: ["sessionId", "text"],
         );
         
 
-@override Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeStart({required RealSessionRuntime that })  { return handler.executeNormal(NormalTask(
+@override Future<void> crateGhApiFlutterApiSendTouch({required String sessionId , required TouchEvent event })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
+sse_encode_box_autoadd_touch_event(event, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13, port: port_);
             
             },
@@ -525,47 +446,50 @@ sse_encode_orientation_mode(mode, serializer);
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimeStartConstMeta,
-            argValues: [that],
+            constMeta: kCrateGhApiFlutterApiSendTouchConstMeta,
+            argValues: [sessionId, event],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimeStartConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_start",
-            argNames: ["that"],
+        TaskConstMeta get kCrateGhApiFlutterApiSendTouchConstMeta => const TaskConstMeta(
+            debugName: "send_touch",
+            argNames: ["sessionId", "event"],
         );
         
 
-@override Future<SessionStats> crateRustScrcpyApiRuntimeRealSessionRuntimeStats({required RealSessionRuntime that })  { return handler.executeNormal(NormalTask(
+@override Future<void> crateGhApiFlutterApiSetClipboard({required String sessionId , required String text , required bool paste })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
+sse_encode_String(text, serializer);
+sse_encode_bool(paste, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14, port: port_);
             
             },
             codec: 
         SseCodec(
-          decodeSuccessData: sse_decode_session_stats,
-          decodeErrorData: null,
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimeStatsConstMeta,
-            argValues: [that],
+            constMeta: kCrateGhApiFlutterApiSetClipboardConstMeta,
+            argValues: [sessionId, text, paste],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimeStatsConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_stats",
-            argNames: ["that"],
+        TaskConstMeta get kCrateGhApiFlutterApiSetClipboardConstMeta => const TaskConstMeta(
+            debugName: "set_clipboard",
+            argNames: ["sessionId", "text", "paste"],
         );
         
 
-@override Future<void> crateRustScrcpyApiRuntimeRealSessionRuntimeStop({required RealSessionRuntime that })  { return handler.executeNormal(NormalTask(
+@override Future<void> crateGhApiFlutterApiSetOrientationMode({required String sessionId , required OrientationMode mode })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(that, serializer);
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
+sse_encode_orientation_mode(mode, serializer);
             pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15, port: port_);
             
             },
@@ -575,741 +499,23 @@ sse_encode_orientation_mode(mode, serializer);
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiRuntimeRealSessionRuntimeStopConstMeta,
-            argValues: [that],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiRuntimeRealSessionRuntimeStopConstMeta => const TaskConstMeta(
-            debugName: "RealSessionRuntime_stop",
-            argNames: ["that"],
-        );
-        
-
-@override Future<String> crateRustScrcpyApiCreateSession({required SessionConfig config })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_box_autoadd_session_config(config, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 30, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_String,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiCreateSessionConstMeta,
-            argValues: [config],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiCreateSessionConstMeta => const TaskConstMeta(
-            debugName: "create_session",
-            argNames: ["config"],
-        );
-        
-
-@override Future<String> crateRustScrcpyApiServiceCreateSession({required SessionConfig config })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_box_autoadd_session_config(config, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_String,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceCreateSessionConstMeta,
-            argValues: [config],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceCreateSessionConstMeta => const TaskConstMeta(
-            debugName: "create_session",
-            argNames: ["config"],
-        );
-        
-
-@override Future<String> crateRustScrcpyApiCreateSessionV2({required SessionConfigV2 config })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_box_autoadd_session_config_v_2(config, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 32, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_String,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiCreateSessionV2ConstMeta,
-            argValues: [config],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiCreateSessionV2ConstMeta => const TaskConstMeta(
-            debugName: "create_session_v2",
-            argNames: ["config"],
-        );
-        
-
-@override Future<String> crateRustScrcpyApiServiceCreateSessionV2({required SessionConfigV2 config })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_box_autoadd_session_config_v_2(config, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 33, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_String,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceCreateSessionV2ConstMeta,
-            argValues: [config],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceCreateSessionV2ConstMeta => const TaskConstMeta(
-            debugName: "create_session_v2",
-            argNames: ["config"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiDisposeSession({required String sessionId })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 34, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiDisposeSessionConstMeta,
-            argValues: [sessionId],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiDisposeSessionConstMeta => const TaskConstMeta(
-            debugName: "dispose_session",
-            argNames: ["sessionId"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiServiceDisposeSession({required String sessionId })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 35, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceDisposeSessionConstMeta,
-            argValues: [sessionId],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceDisposeSessionConstMeta => const TaskConstMeta(
-            debugName: "dispose_session",
-            argNames: ["sessionId"],
-        );
-        
-
-@override Future<DeviceInfo> crateRustScrcpyApiGetDeviceInfo({required String adbPath , required String deviceId })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(adbPath, serializer);
-sse_encode_String(deviceId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 36, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_device_info,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiGetDeviceInfoConstMeta,
-            argValues: [adbPath, deviceId],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiGetDeviceInfoConstMeta => const TaskConstMeta(
-            debugName: "get_device_info",
-            argNames: ["adbPath", "deviceId"],
-        );
-        
-
-@override Future<DeviceInfo> crateRustScrcpyApiServiceGetDeviceInfo({required String adbPath , required String deviceId })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(adbPath, serializer);
-sse_encode_String(deviceId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 37, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_device_info,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceGetDeviceInfoConstMeta,
-            argValues: [adbPath, deviceId],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceGetDeviceInfoConstMeta => const TaskConstMeta(
-            debugName: "get_device_info",
-            argNames: ["adbPath", "deviceId"],
-        );
-        
-
-@override Future<SessionStats> crateRustScrcpyApiGetSessionStats({required String sessionId })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 38, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_session_stats,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiGetSessionStatsConstMeta,
-            argValues: [sessionId],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiGetSessionStatsConstMeta => const TaskConstMeta(
-            debugName: "get_session_stats",
-            argNames: ["sessionId"],
-        );
-        
-
-@override Future<SessionStats> crateRustScrcpyApiServiceGetSessionStats({required String sessionId })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 39, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_session_stats,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceGetSessionStatsConstMeta,
-            argValues: [sessionId],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceGetSessionStatsConstMeta => const TaskConstMeta(
-            debugName: "get_session_stats",
-            argNames: ["sessionId"],
-        );
-        
-
-@override Future<List<DeviceInfo>> crateRustScrcpyApiListDevices({required String adbPath })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(adbPath, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 40, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_list_device_info,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiListDevicesConstMeta,
-            argValues: [adbPath],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiListDevicesConstMeta => const TaskConstMeta(
-            debugName: "list_devices",
-            argNames: ["adbPath"],
-        );
-        
-
-@override Future<List<DeviceInfo>> crateRustScrcpyApiServiceListDevices({required String adbPath })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(adbPath, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 41, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_list_device_info,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceListDevicesConstMeta,
-            argValues: [adbPath],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceListDevicesConstMeta => const TaskConstMeta(
-            debugName: "list_devices",
-            argNames: ["adbPath"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiRequestIdr({required String sessionId })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 42, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiRequestIdrConstMeta,
-            argValues: [sessionId],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiRequestIdrConstMeta => const TaskConstMeta(
-            debugName: "request_idr",
-            argNames: ["sessionId"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiServiceRequestIdr({required String sessionId })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 43, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceRequestIdrConstMeta,
-            argValues: [sessionId],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceRequestIdrConstMeta => const TaskConstMeta(
-            debugName: "request_idr",
-            argNames: ["sessionId"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiSendKey({required String sessionId , required KeyEvent event })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_box_autoadd_key_event(event, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 44, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiSendKeyConstMeta,
-            argValues: [sessionId, event],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiSendKeyConstMeta => const TaskConstMeta(
-            debugName: "send_key",
-            argNames: ["sessionId", "event"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiServiceSendKey({required String sessionId , required KeyEvent event })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_box_autoadd_key_event(event, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 45, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceSendKeyConstMeta,
-            argValues: [sessionId, event],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceSendKeyConstMeta => const TaskConstMeta(
-            debugName: "send_key",
-            argNames: ["sessionId", "event"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiSendScroll({required String sessionId , required ScrollEvent event })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_box_autoadd_scroll_event(event, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 46, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiSendScrollConstMeta,
-            argValues: [sessionId, event],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiSendScrollConstMeta => const TaskConstMeta(
-            debugName: "send_scroll",
-            argNames: ["sessionId", "event"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiServiceSendScroll({required String sessionId , required ScrollEvent event })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_box_autoadd_scroll_event(event, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 47, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceSendScrollConstMeta,
-            argValues: [sessionId, event],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceSendScrollConstMeta => const TaskConstMeta(
-            debugName: "send_scroll",
-            argNames: ["sessionId", "event"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiSendSystemKey({required String sessionId , required SystemKey key })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_system_key(key, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 48, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiSendSystemKeyConstMeta,
-            argValues: [sessionId, key],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiSendSystemKeyConstMeta => const TaskConstMeta(
-            debugName: "send_system_key",
-            argNames: ["sessionId", "key"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiServiceSendSystemKey({required String sessionId , required SystemKey key })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_system_key(key, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 49, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceSendSystemKeyConstMeta,
-            argValues: [sessionId, key],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceSendSystemKeyConstMeta => const TaskConstMeta(
-            debugName: "send_system_key",
-            argNames: ["sessionId", "key"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiSendText({required String sessionId , required String text })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_String(text, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 50, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiSendTextConstMeta,
-            argValues: [sessionId, text],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiSendTextConstMeta => const TaskConstMeta(
-            debugName: "send_text",
-            argNames: ["sessionId", "text"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiServiceSendText({required String sessionId , required String text })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_String(text, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 51, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceSendTextConstMeta,
-            argValues: [sessionId, text],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceSendTextConstMeta => const TaskConstMeta(
-            debugName: "send_text",
-            argNames: ["sessionId", "text"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiSendTouch({required String sessionId , required TouchEvent event })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_box_autoadd_touch_event(event, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 52, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiSendTouchConstMeta,
-            argValues: [sessionId, event],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiSendTouchConstMeta => const TaskConstMeta(
-            debugName: "send_touch",
-            argNames: ["sessionId", "event"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiServiceSendTouch({required String sessionId , required TouchEvent event })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_box_autoadd_touch_event(event, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 53, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceSendTouchConstMeta,
-            argValues: [sessionId, event],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceSendTouchConstMeta => const TaskConstMeta(
-            debugName: "send_touch",
-            argNames: ["sessionId", "event"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiSetClipboard({required String sessionId , required String text , required bool paste })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_String(text, serializer);
-sse_encode_bool(paste, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 54, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiSetClipboardConstMeta,
-            argValues: [sessionId, text, paste],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiSetClipboardConstMeta => const TaskConstMeta(
-            debugName: "set_clipboard",
-            argNames: ["sessionId", "text", "paste"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiServiceSetClipboard({required String sessionId , required String text , required bool paste })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_String(text, serializer);
-sse_encode_bool(paste, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 55, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceSetClipboardConstMeta,
-            argValues: [sessionId, text, paste],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceSetClipboardConstMeta => const TaskConstMeta(
-            debugName: "set_clipboard",
-            argNames: ["sessionId", "text", "paste"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiSetOrientationMode({required String sessionId , required OrientationMode mode })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_orientation_mode(mode, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 56, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiSetOrientationModeConstMeta,
+            constMeta: kCrateGhApiFlutterApiSetOrientationModeConstMeta,
             argValues: [sessionId, mode],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiSetOrientationModeConstMeta => const TaskConstMeta(
+        TaskConstMeta get kCrateGhApiFlutterApiSetOrientationModeConstMeta => const TaskConstMeta(
             debugName: "set_orientation_mode",
             argNames: ["sessionId", "mode"],
         );
         
 
-@override Future<void> crateRustScrcpyApiServiceSetOrientationMode({required String sessionId , required OrientationMode mode })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-sse_encode_orientation_mode(mode, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 57, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceSetOrientationModeConstMeta,
-            argValues: [sessionId, mode],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceSetOrientationModeConstMeta => const TaskConstMeta(
-            debugName: "set_orientation_mode",
-            argNames: ["sessionId", "mode"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiSetupLogger({required LogLevel maxLevel })  { return handler.executeNormal(NormalTask(
+@override Future<void> crateGhApiFlutterApiSetupLogger({required LogLevel maxLevel })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_log_level(maxLevel, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 58, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16, port: port_);
             
             },
             codec: 
@@ -1318,48 +524,23 @@ sse_encode_orientation_mode(mode, serializer);
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiSetupLoggerConstMeta,
+            constMeta: kCrateGhApiFlutterApiSetupLoggerConstMeta,
             argValues: [maxLevel],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiSetupLoggerConstMeta => const TaskConstMeta(
+        TaskConstMeta get kCrateGhApiFlutterApiSetupLoggerConstMeta => const TaskConstMeta(
             debugName: "setup_logger",
             argNames: ["maxLevel"],
         );
         
 
-@override Future<void> crateRustScrcpyApiServiceSetupLogger({required LogLevel maxLevel })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_log_level(maxLevel, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 59, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceSetupLoggerConstMeta,
-            argValues: [maxLevel],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceSetupLoggerConstMeta => const TaskConstMeta(
-            debugName: "setup_logger",
-            argNames: ["maxLevel"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiStartSession({required String sessionId })  { return handler.executeNormal(NormalTask(
+@override Future<void> crateGhApiFlutterApiStartSession({required String sessionId })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 60, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17, port: port_);
             
             },
             codec: 
@@ -1368,23 +549,23 @@ sse_encode_orientation_mode(mode, serializer);
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiStartSessionConstMeta,
+            constMeta: kCrateGhApiFlutterApiStartSessionConstMeta,
             argValues: [sessionId],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiStartSessionConstMeta => const TaskConstMeta(
+        TaskConstMeta get kCrateGhApiFlutterApiStartSessionConstMeta => const TaskConstMeta(
             debugName: "start_session",
             argNames: ["sessionId"],
         );
         
 
-@override Future<void> crateRustScrcpyApiServiceStartSession({required String sessionId })  { return handler.executeNormal(NormalTask(
+@override Future<void> crateGhApiFlutterApiStopSession({required String sessionId })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 61, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18, port: port_);
             
             },
             codec: 
@@ -1393,104 +574,25 @@ sse_encode_orientation_mode(mode, serializer);
           decodeErrorData: sse_decode_AnyhowException,
         )
         ,
-            constMeta: kCrateRustScrcpyApiServiceStartSessionConstMeta,
+            constMeta: kCrateGhApiFlutterApiStopSessionConstMeta,
             argValues: [sessionId],
             apiImpl: this,
         )); }
 
 
-        TaskConstMeta get kCrateRustScrcpyApiServiceStartSessionConstMeta => const TaskConstMeta(
-            debugName: "start_session",
-            argNames: ["sessionId"],
-        );
-        
-
-@override Future<void> crateRustScrcpyApiStopSession({required String sessionId })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 62, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiStopSessionConstMeta,
-            argValues: [sessionId],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiStopSessionConstMeta => const TaskConstMeta(
+        TaskConstMeta get kCrateGhApiFlutterApiStopSessionConstMeta => const TaskConstMeta(
             debugName: "stop_session",
             argNames: ["sessionId"],
         );
         
-
-@override Future<void> crateRustScrcpyApiServiceStopSession({required String sessionId })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 63, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_AnyhowException,
-        )
-        ,
-            constMeta: kCrateRustScrcpyApiServiceStopSessionConstMeta,
-            argValues: [sessionId],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateRustScrcpyApiServiceStopSessionConstMeta => const TaskConstMeta(
-            debugName: "stop_session",
-            argNames: ["sessionId"],
-        );
-        
-
-RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_FlowMonitor => wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor;
-
-RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_FlowMonitor => wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor;
-
-RustArcIncrementStrongCountFnType get rust_arc_increment_strong_count_RealSessionRuntime => wire.rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime;
-
-RustArcDecrementStrongCountFnType get rust_arc_decrement_strong_count_RealSessionRuntime => wire.rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime;
 
 
 
                   @protected AnyhowException dco_decode_AnyhowException(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return AnyhowException(raw as String); }
 
-@protected FlowMonitor dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return FlowMonitorImpl.frbInternalDcoDecode(raw as List<dynamic>); }
-
-@protected RealSessionRuntime dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return RealSessionRuntimeImpl.frbInternalDcoDecode(raw as List<dynamic>); }
-
-@protected RealSessionRuntime dco_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return RealSessionRuntimeImpl.frbInternalDcoDecode(raw as List<dynamic>); }
-
-@protected RealSessionRuntime dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return RealSessionRuntimeImpl.frbInternalDcoDecode(raw as List<dynamic>); }
-
-@protected FlowMonitor dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return FlowMonitorImpl.frbInternalDcoDecode(raw as List<dynamic>); }
-
-@protected RealSessionRuntime dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return RealSessionRuntimeImpl.frbInternalDcoDecode(raw as List<dynamic>); }
-
 @protected String dco_decode_String(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return raw as String; }
-
-@protected SessionRuntime dco_decode_TraitDef_SessionRuntime(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-throw UnimplementedError(); }
 
 @protected AndroidKeyEventAction dco_decode_android_key_event_action(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return AndroidKeyEventAction.values[raw as int]; }
@@ -1512,6 +614,9 @@ return dco_decode_session_config(raw); }
 
 @protected SessionConfigV2 dco_decode_box_autoadd_session_config_v_2(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return dco_decode_session_config_v_2(raw); }
+
+@protected SessionEvent dco_decode_box_autoadd_session_event(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+return dco_decode_session_event(raw); }
 
 @protected TouchEvent dco_decode_box_autoadd_touch_event(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return dco_decode_touch_event(raw); }
@@ -1557,12 +662,6 @@ return (raw as List<dynamic>).map(dco_decode_device_info).toList(); }
 
 @protected Uint8List dco_decode_list_prim_u_8_strict(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return raw as Uint8List; }
-
-@protected List<SessionEvent> dco_decode_list_session_event(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return (raw as List<dynamic>).map(dco_decode_session_event).toList(); }
-
-@protected List<TextureFrame> dco_decode_list_texture_frame(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return (raw as List<dynamic>).map(dco_decode_texture_frame).toList(); }
 
 @protected LogLevel dco_decode_log_level(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return LogLevel.values[raw as int]; }
@@ -1637,15 +736,6 @@ droppedFrames: dco_decode_u_64(arr[4]),); }
 @protected SystemKey dco_decode_system_key(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return SystemKey.values[raw as int]; }
 
-@protected TextureFrame dco_decode_texture_frame(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-final arr = raw as List<dynamic>;
-                if (arr.length != 5) throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
-                return TextureFrame(handle: dco_decode_i_64(arr[0]),
-width: dco_decode_u_32(arr[1]),
-height: dco_decode_u_32(arr[2]),
-generation: dco_decode_u_64(arr[3]),
-pts: dco_decode_i_64(arr[4]),); }
-
 @protected TouchEvent dco_decode_touch_event(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 final arr = raw as List<dynamic>;
                 if (arr.length != 8) throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
@@ -1673,30 +763,9 @@ return raw as int; }
 @protected void dco_decode_unit(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return; }
 
-@protected BigInt dco_decode_usize(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return dcoDecodeU64(raw); }
-
 @protected AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 var inner = sse_decode_String(deserializer);
         return AnyhowException(inner); }
-
-@protected FlowMonitor sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return FlowMonitorImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
-
-@protected RealSessionRuntime sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return RealSessionRuntimeImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
-
-@protected RealSessionRuntime sse_decode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return RealSessionRuntimeImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
-
-@protected RealSessionRuntime sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return RealSessionRuntimeImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
-
-@protected FlowMonitor sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return FlowMonitorImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
-
-@protected RealSessionRuntime sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return RealSessionRuntimeImpl.frbInternalSseDecode(sse_decode_usize(deserializer), sse_decode_i_32(deserializer)); }
 
 @protected String sse_decode_String(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 var inner = sse_decode_list_prim_u_8_strict(deserializer);
@@ -1724,6 +793,9 @@ return (sse_decode_session_config(deserializer)); }
 
 @protected SessionConfigV2 sse_decode_box_autoadd_session_config_v_2(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 return (sse_decode_session_config_v_2(deserializer)); }
+
+@protected SessionEvent sse_decode_box_autoadd_session_event(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+return (sse_decode_session_event(deserializer)); }
 
 @protected TouchEvent sse_decode_box_autoadd_touch_event(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 return (sse_decode_touch_event(deserializer)); }
@@ -1775,22 +847,6 @@ return KeyEvent(action: var_action, keycode: var_keycode, repeat: var_repeat, me
 @protected Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 var len_ = sse_decode_i_32(deserializer);
                 return deserializer.buffer.getUint8List(len_); }
-
-@protected List<SessionEvent> sse_decode_list_session_event(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-
-        var len_ = sse_decode_i_32(deserializer);
-        var ans_ = <SessionEvent>[];
-        for (var idx_ = 0; idx_ < len_; ++idx_) { ans_.add(sse_decode_session_event(deserializer)); }
-        return ans_;
-         }
-
-@protected List<TextureFrame> sse_decode_list_texture_frame(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-
-        var len_ = sse_decode_i_32(deserializer);
-        var ans_ = <TextureFrame>[];
-        for (var idx_ = 0; idx_ < len_; ++idx_) { ans_.add(sse_decode_texture_frame(deserializer)); }
-        return ans_;
-         }
 
 @protected LogLevel sse_decode_log_level(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 var inner = sse_decode_i_32(deserializer);
@@ -1874,14 +930,6 @@ return SessionStats(fps: var_fps, decodeLatencyMs: var_decodeLatencyMs, uploadLa
 var inner = sse_decode_i_32(deserializer);
         return SystemKey.values[inner]; }
 
-@protected TextureFrame sse_decode_texture_frame(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-var var_handle = sse_decode_i_64(deserializer);
-var var_width = sse_decode_u_32(deserializer);
-var var_height = sse_decode_u_32(deserializer);
-var var_generation = sse_decode_u_64(deserializer);
-var var_pts = sse_decode_i_64(deserializer);
-return TextureFrame(handle: var_handle, width: var_width, height: var_height, generation: var_generation, pts: var_pts); }
-
 @protected TouchEvent sse_decode_touch_event(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 var var_action = sse_decode_android_motion_event_action(deserializer);
 var var_pointerId = sse_decode_i_64(deserializer);
@@ -1908,29 +956,8 @@ return deserializer.buffer.getUint8(); }
 @protected void sse_decode_unit(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
  }
 
-@protected BigInt sse_decode_usize(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return deserializer.buffer.getBigUint64(); }
-
 @protected void sse_encode_AnyhowException(AnyhowException self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_String(self.message, serializer); }
-
-@protected void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(FlowMonitor self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_usize((self as FlowMonitorImpl).frbInternalSseEncode(move: true), serializer); }
-
-@protected void sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(RealSessionRuntime self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_usize((self as RealSessionRuntimeImpl).frbInternalSseEncode(move: true), serializer); }
-
-@protected void sse_encode_Auto_RefMut_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(RealSessionRuntime self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_usize((self as RealSessionRuntimeImpl).frbInternalSseEncode(move: false), serializer); }
-
-@protected void sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(RealSessionRuntime self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_usize((self as RealSessionRuntimeImpl).frbInternalSseEncode(move: false), serializer); }
-
-@protected void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerFlowMonitor(FlowMonitor self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_usize((self as FlowMonitorImpl).frbInternalSseEncode(move: null), serializer); }
-
-@protected void sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerRealSessionRuntime(RealSessionRuntime self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_usize((self as RealSessionRuntimeImpl).frbInternalSseEncode(move: null), serializer); }
 
 @protected void sse_encode_String(String self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer); }
@@ -1955,6 +982,9 @@ sse_encode_session_config(self, serializer); }
 
 @protected void sse_encode_box_autoadd_session_config_v_2(SessionConfigV2 self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_session_config_v_2(self, serializer); }
+
+@protected void sse_encode_box_autoadd_session_event(SessionEvent self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_session_event(self, serializer); }
 
 @protected void sse_encode_box_autoadd_touch_event(TouchEvent self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_touch_event(self, serializer); }
@@ -2000,14 +1030,6 @@ sse_encode_i_32(self.length, serializer);
 @protected void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_i_32(self.length, serializer);
                     serializer.buffer.putUint8List(self); }
-
-@protected void sse_encode_list_session_event(List<SessionEvent> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_i_32(self.length, serializer);
-        for (final item in self) { sse_encode_session_event(item, serializer); } }
-
-@protected void sse_encode_list_texture_frame(List<TextureFrame> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_i_32(self.length, serializer);
-        for (final item in self) { sse_encode_texture_frame(item, serializer); } }
 
 @protected void sse_encode_log_level(LogLevel self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_i_32(self.index, serializer); }
@@ -2082,14 +1104,6 @@ sse_encode_u_64(self.droppedFrames, serializer);
 @protected void sse_encode_system_key(SystemKey self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_i_32(self.index, serializer); }
 
-@protected void sse_encode_texture_frame(TextureFrame self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_i_64(self.handle, serializer);
-sse_encode_u_32(self.width, serializer);
-sse_encode_u_32(self.height, serializer);
-sse_encode_u_64(self.generation, serializer);
-sse_encode_i_64(self.pts, serializer);
- }
-
 @protected void sse_encode_touch_event(TouchEvent self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_android_motion_event_action(self.action, serializer);
 sse_encode_i_64(self.pointerId, serializer);
@@ -2115,106 +1129,5 @@ serializer.buffer.putUint8(self); }
 
 @protected void sse_encode_unit(void self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
  }
-
-@protected void sse_encode_usize(BigInt self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-serializer.buffer.putBigUint64(self); }
                 }
                 
-
-            @sealed class FlowMonitorImpl extends RustOpaque implements FlowMonitor {
-                // Not to be used by end users
-                FlowMonitorImpl.frbInternalDcoDecode(List<dynamic> wire):
-                    super.frbInternalDcoDecode(wire, _kStaticData);
-
-                // Not to be used by end users
-                FlowMonitorImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative):
-                    super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
-
-                static final _kStaticData = RustArcStaticData(
-                    rustArcIncrementStrongCount: RustLib.instance.api.rust_arc_increment_strong_count_FlowMonitor,
-                    rustArcDecrementStrongCount: RustLib.instance.api.rust_arc_decrement_strong_count_FlowMonitor,
-                    rustArcDecrementStrongCountPtr: RustLib.instance.api.rust_arc_decrement_strong_count_FlowMonitorPtr,
-                );
-
-                
-            }
-            @sealed class RealSessionRuntimeImpl extends RustOpaque implements RealSessionRuntime {
-                // Not to be used by end users
-                RealSessionRuntimeImpl.frbInternalDcoDecode(List<dynamic> wire):
-                    super.frbInternalDcoDecode(wire, _kStaticData);
-
-                // Not to be used by end users
-                RealSessionRuntimeImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative):
-                    super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
-
-                static final _kStaticData = RustArcStaticData(
-                    rustArcIncrementStrongCount: RustLib.instance.api.rust_arc_increment_strong_count_RealSessionRuntime,
-                    rustArcDecrementStrongCount: RustLib.instance.api.rust_arc_decrement_strong_count_RealSessionRuntime,
-                    rustArcDecrementStrongCountPtr: RustLib.instance.api.rust_arc_decrement_strong_count_RealSessionRuntimePtr,
-                );
-
-                /// 返回运行态标记。
- Future<bool>  isRunning()=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimeIsRunning(that: this, );
-
-
-/// 轮询并清空当前事件队列。
- Future<List<SessionEvent>>  pollSessionEvents()=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimePollSessionEvents(that: this, );
-
-
-/// 轮询最新可渲染帧。
-///
-/// 策略：每次只返回“最后一帧”，并统计被覆盖/丢弃的历史帧。
- Future<List<TextureFrame>>  pollTextureFrames()=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimePollTextureFrames(that: this, );
-
-
-/// 下发 IDR 请求命令到 worker。
- Future<void>  requestIdr()=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimeRequestIdr(that: this, );
-
-
-/// 下发按键事件命令到 worker。
- Future<void>  sendKey({required KeyEvent event })=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimeSendKey(that: this, event: event);
-
-
-/// 下发滚动事件命令到 worker。
- Future<void>  sendScroll({required ScrollEvent event })=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimeSendScroll(that: this, event: event);
-
-
-/// 下发系统按键命令到 worker。
- Future<void>  sendSystemKey({required SystemKey key })=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimeSendSystemKey(that: this, key: key);
-
-
-/// 下发文本输入命令到 worker。
- Future<void>  sendText({required String text })=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimeSendText(that: this, text: text);
-
-
-/// 下发触摸事件命令到 worker。
- Future<void>  sendTouch({required TouchEvent event })=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimeSendTouch(that: this, event: event);
-
-
-/// 下发剪贴板命令到 worker。
- Future<void>  setClipboard({required String text , required bool paste })=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimeSetClipboard(that: this, text: text, paste: paste);
-
-
-/// 下发方向切换命令到 worker。
- Future<void>  setOrientationMode({required OrientationMode mode })=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimeSetOrientationMode(that: this, mode: mode);
-
-
-/// 启动会话 worker。
-///
-/// 流程：
-/// 1) 建立 ADB/scrcpy 视频与控制链路；
-/// 2) 启动解码管线；
-/// 3) 在循环中消费命令、视频包与解码输出；
-/// 4) 产出帧队列与事件队列供 FFI 轮询。
- Future<void>  start()=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimeStart(that: this, );
-
-
-/// 获取当前统计快照（锁失败时返回零值兜底）。
- Future<SessionStats>  stats()=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimeStats(that: this, );
-
-
-/// 停止 worker，并清空运行时缓存队列。
- Future<void>  stop()=>RustLib.instance.api.crateRustScrcpyApiRuntimeRealSessionRuntimeStop(that: this, );
-
-
-            }
