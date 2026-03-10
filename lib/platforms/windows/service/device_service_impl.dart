@@ -490,6 +490,27 @@ class DeviceServiceImpl extends DeviceService {
   }
 
   @override
+  Future<void> sendClipboardToDevice({
+    required String text,
+    required bool paste,
+  }) async {
+    final sessionId = currentSessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      return;
+    }
+    if (text.isEmpty) {
+      return;
+    }
+
+    // 调用 scrcpy SetClipboard 控制协议，把 Windows 剪贴板写入设备。
+    await ScrcpyRustThirdPartyApi.instance.setClipboard(
+      sessionId: sessionId,
+      text: text,
+      paste: paste,
+    );
+  }
+
+  @override
   Future<void> sendScrollInput({
     required double x,
     required double y,

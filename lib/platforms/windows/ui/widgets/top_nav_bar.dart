@@ -89,7 +89,6 @@ class _TopNavBarState extends State<TopNavBar> {
                     : Icons.dark_mode_outlined,
               ),
               onPressed: () {
-                Log.i('切换主题');
                 widget.onThemeToggle?.call();
               },
             ),

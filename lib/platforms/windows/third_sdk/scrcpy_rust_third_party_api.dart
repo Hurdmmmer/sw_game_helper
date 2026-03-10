@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/services.dart' show MethodCall, MethodChannel;
+import 'package:flutter/services.dart'
+    show Clipboard, ClipboardData, MethodCall, MethodChannel;
 import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
 import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_api/flutter_api.dart' as flutter_api;
 
@@ -156,6 +157,22 @@ class ScrcpyRustThirdPartyApi {
     await flutter_api.sendText(sessionId: sessionId, text: text);
   }
 
+  /// 设置设备剪贴板文本，并按需触发设备端粘贴动作。
+  Future<void> setClipboard({
+    required String sessionId,
+    required String text,
+    required bool paste,
+  }) async {
+    if (text.isEmpty) {
+      return;
+    }
+    await flutter_api.setClipboard(
+      sessionId: sessionId,
+      text: text,
+      paste: paste,
+    );
+  }
+
 
   Future<void> sendScroll(
     String sessionId,
@@ -230,6 +247,9 @@ class ScrcpyRustThirdPartyApi {
     }
 
     try {
+      if (await _handleClipboardChangedEvent(eventJson)) {
+        return null;
+      }
       final event = _parseSessionEvent(eventJson);
       if (event != null && !_sessionEventController.isClosed) {
         _sessionEventController.add(
@@ -241,6 +261,25 @@ class ScrcpyRustThirdPartyApi {
       Log.e('解析 SessionEvent 回调异常堆栈', e, st);
     }
     return null;
+  }
+
+  /// 处理 Rust 自定义剪贴板事件：设备复制 -> Windows 剪贴板同步。
+  Future<bool> _handleClipboardChangedEvent(String eventJson) async {
+    final decoded = jsonDecode(eventJson);
+    if (decoded is! Map || !decoded.containsKey('ClipboardChanged')) {
+      return false;
+    }
+    final payload = decoded['ClipboardChanged'];
+    if (payload is! Map) {
+      return false;
+    }
+    final text = payload['text']?.toString() ?? '';
+    if (text.isEmpty) {
+      return true;
+    }
+    await Clipboard.setData(ClipboardData(text: text));
+    Log.i('剪贴板同步：设备内容已写入 Windows');
+    return true;
   }
 
   /// 将 Rust 侧 JSON 事件解码为 FRB 生成的 `SessionEvent`。

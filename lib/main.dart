@@ -47,7 +47,6 @@ class _MainAppState extends ConsumerState<SwHelper> {
       _themeMode = _themeMode == ThemeMode.dark
           ? ThemeMode.light
           : ThemeMode.dark;
-      Log.i('切换主题为 $_themeMode');
     });
   }
 

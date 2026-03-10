@@ -1,26 +1,29 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:sw_game_helper/enums/connection_status.dart';
 import 'package:sw_game_helper/models/device_info.dart';
 import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
 
-
-/// 说明：该注释已完成中文修复，详见下方代码逻辑。
+/// 设备方向模式。
 enum DeviceScreenOrientation { auto, portrait, landscape }
-/// 说明：该注释已完成中文修复，详见下方代码逻辑。
+
+/// 解码模式选择。
 enum DeviceDecoderMode { preferHardware, forceHardware, forceSoftware }
 
+/// 设备服务抽象接口。
+///
+/// 负责统一封装“设备连接、输入转发、会话事件、会话统计”等能力。
 abstract class DeviceService {
   final _statusController = StreamController<ConnectionStatus>.broadcast();
 
   AppDeviceInfo? _currentDevice;
 
   DeviceService() {
-    // 鍚姩鍗虫湁鐘舵€侊紝閬垮厤 StreamProvider 闀挎湡 loading
+    // 初始化时默认处于未连接状态，避免上层一直处于 loading。
     _statusController.add(ConnectionStatus.disconnected);
   }
 
-  /// 鏇存柊璁惧杩炴帴鐘舵€?
+  /// 更新当前设备连接状态。
   void refreshDeviceStatus(ConnectionStatus status) {
     if (_currentDevice != null) {
       _currentDevice!.connectionStatus = status;
@@ -28,52 +31,55 @@ abstract class DeviceService {
     _statusController.add(status);
   }
 
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
+  /// 扫描设备列表。
   Future<List<AppDeviceInfo>> scanDevices(String deviceType);
 
-  /// 杩炴帴璁惧
+  /// 连接设备并启动会话。
+  ///
+  /// 参数说明：
+  /// - [renderPipelineMode]：渲染管线模式；
+  /// - [decoderMode]：解码器偏好；
+  /// - [turnScreenOff]：连接后是否请求设备熄屏（投屏继续）。
   Future<bool> connectDevice(
-    AppDeviceInfo device, 
-    {
-      RenderPipelineMode renderPipelineMode = RenderPipelineMode.cpuPixelBufferV2,
-      DeviceDecoderMode decoderMode = DeviceDecoderMode.preferHardware,
-      /// 说明：该注释已完成中文修复，详见下方代码逻辑。
-      ///
-      /// 说明：该注释已完成中文修复，详见下方代码逻辑。
-      /// 说明：该注释已完成中文修复，详见下方代码逻辑。
-      /// 说明：该注释已完成中文修复，详见下方代码逻辑。
-      bool turnScreenOff = false,
-    }
-  );
+    AppDeviceInfo device, {
+    RenderPipelineMode renderPipelineMode = RenderPipelineMode.cpuPixelBufferV2,
+    DeviceDecoderMode decoderMode = DeviceDecoderMode.preferHardware,
+    bool turnScreenOff = false,
+  });
 
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
+  /// 断开当前设备会话并清理资源。
   Future<void> disconnectDevice(AppDeviceInfo device);
 
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
+  /// 设置当前设备方向模式。
   Future<void> setCurrentDeviceOrientation(DeviceScreenOrientation orientation);
 
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
+  /// 发送触摸事件到设备。
   Future<void> sendTouchEvent(TouchEvent event);
 
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
+  /// 发送按键事件到设备。
   ///
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
+  /// 参数说明：
+  /// - [keycode]：Android keycode；
+  /// - [isDown]：true 为按下，false 为抬起。
   Future<void> sendKeyInput({
     required int keycode,
     required bool isDown,
   });
 
-  /// 发送文本输入到当前会话（支持中文和符号输入）。
+  /// 发送文本输入到设备（适合中文、符号、输入法提交文本）。
   Future<void> sendTextInput(String text);
 
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
+  /// 发送剪贴板文本到设备端。
   ///
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
+  /// 参数说明：
+  /// - [text]：要写入设备剪贴板的文本；
+  /// - [paste]：是否在写入后立即触发设备端粘贴动作。
+  Future<void> sendClipboardToDevice({
+    required String text,
+    required bool paste,
+  });
+
+  /// 发送滚动输入到设备。
   Future<void> sendScrollInput({
     required double x,
     required double y,
@@ -83,24 +89,19 @@ abstract class DeviceService {
     required int vscroll,
   });
 
-  /// 璁惧杩炴帴鐘舵€佹祦
+  /// 设备连接状态流。
   Stream<ConnectionStatus> get connectionStatus => _statusController.stream;
 
-  /// 褰撳墠杩炴帴鐨勮澶?
+  /// 当前连接的设备信息。
   AppDeviceInfo? get connectedDevice => _currentDevice;
 
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
+  /// 当前会话 ID。
   String? get currentSessionId;
 
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
-  ///
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
+  /// 订阅会话事件流。
   Stream<SessionEvent> streamSessionEvents();
 
-  /// 说明：该注释已完成中文修复，详见下方代码逻辑。
+  /// 获取当前会话统计。
   Future<SessionStats?> getCurrentSessionStats();
 
   set currentDevice(AppDeviceInfo? device) {
@@ -111,16 +112,8 @@ abstract class DeviceService {
     _currentDevice = null;
   }
 
-  /// 鍏抽棴鏈嶅姟
+  /// 释放服务资源。
   void dispose() {
     _statusController.close();
   }
 }
-
-
-
-
-
-
-
-

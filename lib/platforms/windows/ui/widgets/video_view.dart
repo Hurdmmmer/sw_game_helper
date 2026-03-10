@@ -35,10 +35,6 @@ class _VideoViewState extends ConsumerState<VideoView>
     debugLabel: 'VideoViewKeyboard',
   );
 
-  /// Android KeyCode：语言切换键。
-  /// 说明：按 Android 官方键值触发输入法中英文切换。
-  static const int _androidKeycodeLanguageSwitch = 204;
-
   /// 连接状态订阅。
   /// 仅用于“运行时门控”（connected -> start，其他状态 -> stop）。
   StreamSubscription<ConnectionStatus>? _statusSub;
@@ -458,10 +454,10 @@ class _VideoViewState extends ConsumerState<VideoView>
       localH: localH,
     );
 
-    return KeyboardListener(
+    return Focus(
       focusNode: _keyboardFocusNode,
       autofocus: true,
-      onKeyEvent: _handleRawKeyEvent,
+      onKeyEvent: (_, event) => _onFocusKeyEvent(event),
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () {
@@ -484,25 +480,52 @@ class _VideoViewState extends ConsumerState<VideoView>
     );
   }
 
+  /// Focus 键盘事件入口。
+  ///
+  /// 返回 handled 可阻断 Windows 默认输入法处理链路，避免本机抢占快捷键。
+  KeyEventResult _onFocusKeyEvent(KeyEvent event) {
+    final handled = _handleRawKeyEvent(event);
+    return handled ? KeyEventResult.handled : KeyEventResult.ignored;
+  }
+
   /// 处理键盘事件。
   ///
   /// 输入策略：
-  /// - 命中 Ctrl+Alt+J 时，发送 Android 官方语言切换键（KEYCODE_LANGUAGE_SWITCH）；
   /// - 其余可打印字符优先走文本通道；
   /// - 当 Ctrl/Alt/Meta 按下时强制走 keycode 通道，保证 Ctrl+C / Ctrl+V 生效；
   /// - 控制键与无字符按键走 keycode 通道。
-  void _handleRawKeyEvent(KeyEvent event) {
+  bool _handleRawKeyEvent(KeyEvent event) {
     if (!_isInputActive()) {
-      return;
-    }
-
-    if (_isLanguageToggleShortcut(event)) {
-      final service = ref.read(deviceServiceProvider);
-      unawaited(_sendLanguageToggleShortcut(service));
-      return;
+      return false;
     }
 
     final service = ref.read(deviceServiceProvider);
+    if (_isCtrlShortcut(event, LogicalKeyboardKey.keyA)) {
+      if (event is KeyDownEvent) {
+        unawaited(_sendCtrlComboShortcut(service, 29, 'Ctrl+A'));
+      }
+      return true;
+    }
+    if (_isCtrlShortcut(event, LogicalKeyboardKey.keyC)) {
+      if (event is KeyDownEvent) {
+        unawaited(_sendSemanticEditingKey(service, 278, 'Ctrl+C(COPY)'));
+      }
+      return true;
+    }
+    if (_isCtrlShortcut(event, LogicalKeyboardKey.keyX)) {
+      if (event is KeyDownEvent) {
+        unawaited(_sendSemanticEditingKey(service, 277, 'Ctrl+X(CUT)'));
+      }
+      return true;
+    }
+    if (_isClipboardPasteShortcut(event)) {
+      if (event is KeyDownEvent) {
+        unawaited(_syncWindowsClipboardBeforePaste(service));
+      }
+      // Ctrl+V 快捷键交由“剪贴板同步+粘贴”链路处理，避免重复注入按键。
+      return true;
+    }
+
     final isDown = event is KeyDownEvent || event is KeyRepeatEvent;
 
     // 文本优先：中文输入法和可打印字符走文本通道，避免仅 keycode 导致中文无法输入。
@@ -511,27 +534,45 @@ class _VideoViewState extends ConsumerState<VideoView>
       final text = event.character;
       if (text != null && text.trim().isNotEmpty) {
         unawaited(service.sendTextInput(text));
-        return;
+        return true;
       }
     }
 
     // 控制键和无字符按键走 keycode 通道。
     final keycode = _mapLogicalKeyToAndroid(event.logicalKey);
     if (keycode == null) {
-      return;
-    }
-    unawaited(service.sendKeyInput(keycode: keycode, isDown: isDown));
-  }
-
-  /// 检测“中英文切换”快捷键：Ctrl + Alt + J。
-  bool _isLanguageToggleShortcut(KeyEvent event) {
-    if (event is! KeyDownEvent) {
       return false;
     }
+    unawaited(service.sendKeyInput(keycode: keycode, isDown: isDown));
+    return true;
+  }
+
+  /// 检测 Windows 侧粘贴快捷键：Ctrl + V。
+  ///
+  /// 说明：
+  /// - 只允许 Ctrl 修饰，不允许 Alt/Meta，避免与系统级组合键冲突；
+  /// - 对 KeyDown/KeyUp 都判定为命中，用于吞掉该组合键的默认 keycode 路径。
+  bool _isClipboardPasteShortcut(KeyEvent event) {
+    if (event.logicalKey != LogicalKeyboardKey.keyV) {
+      return false;
+    }
+    return _isCtrlModifierActive();
+  }
+
+  /// 检测 Ctrl + 指定按键快捷键。
+  bool _isCtrlShortcut(KeyEvent event, LogicalKeyboardKey key) {
+    if (event.logicalKey != key) {
+      return false;
+    }
+    return _isCtrlModifierActive();
+  }
+
+  /// 当前是否为“仅 Ctrl 修饰”状态（排除 Alt/Meta）。
+  bool _isCtrlModifierActive() {
     final keyboard = HardwareKeyboard.instance;
     return keyboard.isControlPressed &&
-        keyboard.isAltPressed &&
-        event.logicalKey == LogicalKeyboardKey.keyJ;
+        !keyboard.isAltPressed &&
+        !keyboard.isMetaPressed;
   }
 
   /// 当前是否存在 Ctrl/Alt/Meta 任一修饰键按下。
@@ -542,20 +583,59 @@ class _VideoViewState extends ConsumerState<VideoView>
         keyboard.isMetaPressed;
   }
 
-  /// 发送 Android 官方语言切换键（KEYCODE_LANGUAGE_SWITCH）。
-  Future<void> _sendLanguageToggleShortcut(dynamic service) async {
+  /// 同步 Windows 剪贴板到设备后，再注入 Ctrl+V。
+  ///
+  /// 行为策略：
+  /// - 剪贴板有文本：setClipboard(paste=true)，由设备端直接执行粘贴；
+  /// - 剪贴板为空：不注入任何按键，避免误粘贴旧内容。
+  Future<void> _syncWindowsClipboardBeforePaste(dynamic service) async {
     try {
-      await service.sendKeyInput(
-        keycode: _androidKeycodeLanguageSwitch,
-        isDown: true,
-      );
-      await service.sendKeyInput(
-        keycode: _androidKeycodeLanguageSwitch,
-        isDown: false,
-      );
-      Log.i('VideoView shortcut: sent KEYCODE_LANGUAGE_SWITCH(204)');
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text ?? '';
+      if (text.trim().isEmpty) {
+        Log.i('快捷键处理：Windows 剪贴板为空，忽略 Ctrl+V');
+        return;
+      }
+      await service.sendClipboardToDevice(text: text, paste: true);
+      Log.i('快捷键处理：已同步并触发设备粘贴');
     } catch (e, st) {
-      Log.e('VideoView shortcut failed: $e', e, st);
+      Log.e('快捷键处理失败：剪贴板粘贴链路异常: $e', e, st);
+    }
+  }
+
+  /// 发送 Android 编辑语义键（COPY/CUT/PASTE）。
+  Future<void> _sendSemanticEditingKey(
+    dynamic service,
+    int keycode,
+    String tag,
+  ) async {
+    try {
+      await service.sendKeyInput(keycode: keycode, isDown: true);
+      await service.sendKeyInput(keycode: keycode, isDown: false);
+      Log.i('快捷键处理：已注入 $tag');
+    } catch (e, st) {
+      Log.e('快捷键处理失败：注入 $tag 异常: $e', e, st);
+    }
+  }
+
+  /// 统一注入 Ctrl 组合键。
+  ///
+  /// 设计目标：
+  /// - 不依赖主机侧修饰键事件时序；
+  /// - 显式保证“Ctrl down -> 目标键 down/up -> Ctrl up”顺序。
+  Future<void> _sendCtrlComboShortcut(
+    dynamic service,
+    int targetKeycode,
+    String tag,
+  ) async {
+    try {
+      await service.sendKeyInput(keycode: 113, isDown: true); // CTRL_LEFT down
+      await service.sendKeyInput(keycode: targetKeycode, isDown: true);
+      await service.sendKeyInput(keycode: targetKeycode, isDown: false);
+      await service.sendKeyInput(keycode: 113, isDown: false); // CTRL_LEFT up
+      Log.i('快捷键处理：已注入 $tag');
+    } catch (e, st) {
+      Log.e('快捷键处理失败：注入 $tag 异常: $e', e, st);
     }
   }
 
@@ -614,8 +694,17 @@ class _VideoViewState extends ConsumerState<VideoView>
     if (key == LogicalKeyboardKey.arrowDown) return 20;
     if (key == LogicalKeyboardKey.arrowLeft) return 21;
     if (key == LogicalKeyboardKey.arrowRight) return 22;
+    // 快捷键字母显式映射（A/C/V/X）。
+    if (key == LogicalKeyboardKey.keyA) return 29;
+    if (key == LogicalKeyboardKey.keyC) return 31;
+    if (key == LogicalKeyboardKey.keyV) return 50;
+    if (key == LogicalKeyboardKey.keyX) return 52;
 
-    // 修饰键映射（保证 Ctrl+C / Ctrl+V 等组合键可被设备端识别）。
+    // 修饰键显式映射。
+    if (key == LogicalKeyboardKey.control) return 113;
+    if (key == LogicalKeyboardKey.shift) return 59;
+    if (key == LogicalKeyboardKey.alt) return 57;
+    if (key == LogicalKeyboardKey.meta) return 117;
     if (key == LogicalKeyboardKey.controlLeft) return 113;
     if (key == LogicalKeyboardKey.controlRight) return 114;
     if (key == LogicalKeyboardKey.shiftLeft) return 59;
@@ -644,15 +733,6 @@ class _VideoViewState extends ConsumerState<VideoView>
     if (key == LogicalKeyboardKey.bracketRight) return 72;
     if (key == LogicalKeyboardKey.backslash) return 73;
     if (key == LogicalKeyboardKey.backquote) return 68;
-    final label = key.keyLabel;
-    if (label.length == 1) {
-      final code = label.codeUnitAt(0);
-      if (code >= 0x30 && code <= 0x39) return 7 + (code - 0x30);
-      final upper = label.toUpperCase();
-      final upperCode = upper.codeUnitAt(0);
-      if (upperCode >= 0x41 && upperCode <= 0x5A)
-        return 29 + (upperCode - 0x41);
-    }
     return null;
   }
 
