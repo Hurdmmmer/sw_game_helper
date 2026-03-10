@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/services.dart';
+import 'package:flutter/services.dart' show MethodCall, MethodChannel;
 import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
 import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_api/flutter_api.dart' as flutter_api;
 
@@ -136,12 +136,35 @@ class ScrcpyRustThirdPartyApi {
     await flutter_api.sendTouch(sessionId: sessionId, event: event);
   }
 
-  /// 会话事件流（回调驱动，无轮询）。
-  ///
-  /// 数据路径：
-  /// 1. Rust runtime 触发 `rs_register_session_event_callback` 回调；
-  /// 2. Windows Runner 把事件转发到 `dxgi_texture_bridge.onSessionEvent`；
-  /// 3. 这里解析 JSON，再按 sessionId 分发给订阅者。
+
+  Future<void> sendKey(
+    String sessionId,
+    KeyEvent event,
+  ) async {
+    await flutter_api.sendKey(sessionId: sessionId, event: event);
+  }
+
+  /// 发送文本输入到当前会话。
+  /// 该接口用于中文输入法和符号输入，优先于 keycode 模式。
+  Future<void> sendText(
+    String sessionId,
+    String text,
+  ) async {
+    if (text.isEmpty) {
+      return;
+    }
+    await flutter_api.sendText(sessionId: sessionId, text: text);
+  }
+
+
+  Future<void> sendScroll(
+    String sessionId,
+    ScrollEvent event,
+  ) async {
+    await flutter_api.sendScroll(sessionId: sessionId, event: event);
+  }
+
+ 
   Stream<SessionEvent> streamSessionEvents(String sessionId) {
     _ensureSessionEventBridgeBound();
     return _sessionEventController.stream

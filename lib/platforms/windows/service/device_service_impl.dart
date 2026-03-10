@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:sw_game_helper/enums/connection_mode.dart';
 import 'package:sw_game_helper/enums/connection_status.dart';
@@ -61,8 +61,7 @@ class DeviceServiceImpl extends DeviceService {
     _eventSub = null;
   }
 
-  /// 检查回调是否属于当前活动会话。
-  ///
+
   /// 防止旧会话异步回调（尤其是重连后）污染当前 UI 状态。
   bool _isSessionActive(String sessionId, int epoch) {
     if (_disposed) {
@@ -185,9 +184,7 @@ class DeviceServiceImpl extends DeviceService {
       return true;
     }
 
-    if (replaceExisting &&
-        existingSessionId != null &&
-        existingSessionId.isNotEmpty) {
+    if (replaceExisting && existingSessionId != null && existingSessionId.isNotEmpty) {
       try {
         await ScrcpyRustThirdPartyApi.instance.disconnect(existingSessionId);
       } catch (e, st) {
@@ -207,6 +204,7 @@ class DeviceServiceImpl extends DeviceService {
       // 关键透传：把 UI 的熄屏开关传到 Rust，会话建链后再执行设备熄屏请求。
       turnScreenOff: turnScreenOff,
     );
+
     _sessionEpoch += 1;
     _activeSessionEpoch = _sessionEpoch;
     await _bindSessionStreams(sessionId, _activeSessionEpoch);
@@ -454,6 +452,67 @@ class DeviceServiceImpl extends DeviceService {
       return;
     }
     await ScrcpyRustThirdPartyApi.instance.sendTouch(sessionId, event);
+  }
+
+  @override
+  Future<void> sendKeyInput({
+    required int keycode,
+    required bool isDown,
+  }) async {
+    final sessionId = currentSessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      return;
+    }
+
+    // 按键事件
+    final event = KeyEvent(
+      action: isDown ? AndroidKeyEventAction.down : AndroidKeyEventAction.up,
+      keycode: keycode,
+      repeat: 0,
+      metastate: 0,
+    );
+    await ScrcpyRustThirdPartyApi.instance.sendKey(sessionId, event);
+  }
+
+  @override
+  Future<void> sendTextInput(String text) async {
+    final sessionId = currentSessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      return;
+    }
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      return;
+    }
+
+    // 文本输入通道：用于中文输入法提交文本和符号输入。
+    await ScrcpyRustThirdPartyApi.instance.sendText(sessionId, trimmed);
+  }
+
+  @override
+  Future<void> sendScrollInput({
+    required double x,
+    required double y,
+    required int width,
+    required int height,
+    required int hscroll,
+    required int vscroll,
+  }) async {
+    final sessionId = currentSessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      return;
+    }
+
+    // 滚动事件
+    final event = ScrollEvent(
+      x: x,
+      y: y,
+      width: width,
+      height: height,
+      hscroll: hscroll,
+      vscroll: vscroll,
+    );
+    await ScrcpyRustThirdPartyApi.instance.sendScroll(sessionId, event);
   }
 
   @override

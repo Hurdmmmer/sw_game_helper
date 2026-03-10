@@ -1,24 +1,20 @@
 import 'dart:async';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sw_game_helper/enums/connection_status.dart';
-import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
+import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart'
+    hide KeyEvent;
 import 'package:sw_game_helper/platforms/windows/providers/device_provider.dart';
 import 'package:sw_game_helper/platforms/windows/service/texture_bridge_client.dart';
 import 'package:sw_game_helper/platforms/windows/ui/widgets/touch_input_controller.dart';
 import 'package:sw_game_helper/utils/logger_service.dart';
 
-/// 单组件双后端：DXGI（V1）与 CPU PixelBuffer（V2）。
 enum VideoRenderBackend { dxgi, cpuPixelBuffer }
 
-/// 视频显示组件（真实纹理渲染）。
 ///
-/// 规则：
-/// 1. 只显示当前会话 `sessionId` 的帧；
-/// 2. 只接受当前及更新代际 `generation`；
-/// 3. 使用“单 textureId + 句柄更新”策略，减少状态复杂度；
-/// 4. 断开或会话切换时必须释放旧纹理，防止串流；
-/// 5. 触控坐标按当前纹理尺寸映射到设备像素坐标。
+
 class VideoView extends ConsumerStatefulWidget {
   const VideoView({super.key, this.backend = VideoRenderBackend.dxgi});
 
@@ -32,6 +28,16 @@ class _VideoViewState extends ConsumerState<VideoView>
     with WidgetsBindingObserver, VideoTouchMixin<VideoView> {
   /// 统一纹理桥接客户端。
   final _textureBridge = TextureBridgeClient.instance;
+
+  /// 视频区域键盘焦点节点。
+  /// 仅当视频区域获得焦点时，键盘输入才会透传到设备。
+  final FocusNode _keyboardFocusNode = FocusNode(
+    debugLabel: 'VideoViewKeyboard',
+  );
+
+  /// Android KeyCode：语言切换键。
+  /// 说明：按 Android 官方键值触发输入法中英文切换。
+  static const int _androidKeycodeLanguageSwitch = 204;
 
   /// 连接状态订阅。
   /// 仅用于“运行时门控”（connected -> start，其他状态 -> stop）。
@@ -97,6 +103,10 @@ class _VideoViewState extends ConsumerState<VideoView>
       ? TextureBridgeBackend.cpuPixelBuffer
       : TextureBridgeBackend.dxgi;
 
+  /// 组件初始化时调用。
+  /// 功能：
+  /// 1. 添加 WidgetsBinding 观察者，监听自己的生命周期事件。
+  /// 2. 绑定运行时状态变化监听器
   @override
   void initState() {
     super.initState();
@@ -119,6 +129,7 @@ class _VideoViewState extends ConsumerState<VideoView>
     }
   }
 
+  /// 监听触摸指标变化。
   @override
   void didChangeMetrics() {
     // 窗口移动/缩放/跨屏切换后，Flutter 可能丢失当前 pointer 的 up/cancel。
@@ -139,9 +150,7 @@ class _VideoViewState extends ConsumerState<VideoView>
       if (_isDisposing) {
         return;
       }
-      Log.d(
-        'VideoView runtime gate status: $status',
-      );
+      Log.d('VideoView runtime gate status: $status');
       final shouldRun = status == ConnectionStatus.connected;
       if (shouldRun) {
         _startRuntimeIfNeeded();
@@ -423,6 +432,230 @@ class _VideoViewState extends ConsumerState<VideoView>
     Log.i('VideoView dispose texture done');
   }
 
+  /// 判断当前是否有输入会话激活。
+  bool _isInputActive() {
+    if (_isDisposing || !_runtimeStarted || _textureId == null) {
+      return false;
+    }
+    final service = ref.read(deviceServiceProvider);
+    final sessionId = service.currentSessionId;
+    return sessionId != null && sessionId.isNotEmpty;
+  }
+
+  /// 构建 可交互视频层。
+  ///
+  /// 包含三层能力：
+  /// 1. 触控（原有能力）；
+  /// 2. 键盘（仅在视频区域获得焦点时生效）；
+  /// 3. 滚轮（仅投屏会话激活时生效）。
+  Widget _buildInteractiveSurface({
+    required double localW,
+    required double localH,
+  }) {
+    final touchLayer = buildTouchListener(
+      child: Texture(textureId: _textureId!),
+      localW: localW,
+      localH: localH,
+    );
+
+    return KeyboardListener(
+      focusNode: _keyboardFocusNode,
+      autofocus: true,
+      onKeyEvent: _handleRawKeyEvent,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          // 点击时请求键盘焦点，仅在视频区域获得焦点时生效。
+          if (!_keyboardFocusNode.hasFocus) {
+            _keyboardFocusNode.requestFocus();
+          }
+        },
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerSignal: (event) {
+            if (event is! PointerScrollEvent) {
+              return;
+            }
+            _handlePointerScroll(event, localW: localW, localH: localH);
+          },
+          child: touchLayer,
+        ),
+      ),
+    );
+  }
+
+  /// 处理键盘事件。
+  ///
+  /// 输入策略：
+  /// - 命中 Ctrl+Alt+J 时，发送 Android 官方语言切换键（KEYCODE_LANGUAGE_SWITCH）；
+  /// - 其余可打印字符优先走文本通道；
+  /// - 当 Ctrl/Alt/Meta 按下时强制走 keycode 通道，保证 Ctrl+C / Ctrl+V 生效；
+  /// - 控制键与无字符按键走 keycode 通道。
+  void _handleRawKeyEvent(KeyEvent event) {
+    if (!_isInputActive()) {
+      return;
+    }
+
+    if (_isLanguageToggleShortcut(event)) {
+      final service = ref.read(deviceServiceProvider);
+      unawaited(_sendLanguageToggleShortcut(service));
+      return;
+    }
+
+    final service = ref.read(deviceServiceProvider);
+    final isDown = event is KeyDownEvent || event is KeyRepeatEvent;
+
+    // 文本优先：中文输入法和可打印字符走文本通道，避免仅 keycode 导致中文无法输入。
+    // 但当 Ctrl/Alt/Meta 修饰键按下时，必须走 keycode 通道，确保 Ctrl+C / Ctrl+V 等快捷键生效。
+    if (isDown && !_hasModifierPressed()) {
+      final text = event.character;
+      if (text != null && text.trim().isNotEmpty) {
+        unawaited(service.sendTextInput(text));
+        return;
+      }
+    }
+
+    // 控制键和无字符按键走 keycode 通道。
+    final keycode = _mapLogicalKeyToAndroid(event.logicalKey);
+    if (keycode == null) {
+      return;
+    }
+    unawaited(service.sendKeyInput(keycode: keycode, isDown: isDown));
+  }
+
+  /// 检测“中英文切换”快捷键：Ctrl + Alt + J。
+  bool _isLanguageToggleShortcut(KeyEvent event) {
+    if (event is! KeyDownEvent) {
+      return false;
+    }
+    final keyboard = HardwareKeyboard.instance;
+    return keyboard.isControlPressed &&
+        keyboard.isAltPressed &&
+        event.logicalKey == LogicalKeyboardKey.keyJ;
+  }
+
+  /// 当前是否存在 Ctrl/Alt/Meta 任一修饰键按下。
+  bool _hasModifierPressed() {
+    final keyboard = HardwareKeyboard.instance;
+    return keyboard.isControlPressed ||
+        keyboard.isAltPressed ||
+        keyboard.isMetaPressed;
+  }
+
+  /// 发送 Android 官方语言切换键（KEYCODE_LANGUAGE_SWITCH）。
+  Future<void> _sendLanguageToggleShortcut(dynamic service) async {
+    try {
+      await service.sendKeyInput(
+        keycode: _androidKeycodeLanguageSwitch,
+        isDown: true,
+      );
+      await service.sendKeyInput(
+        keycode: _androidKeycodeLanguageSwitch,
+        isDown: false,
+      );
+      Log.i('VideoView shortcut: sent KEYCODE_LANGUAGE_SWITCH(204)');
+    } catch (e, st) {
+      Log.e('VideoView shortcut failed: $e', e, st);
+    }
+  }
+
+  void _handlePointerScroll(
+    PointerScrollEvent event, {
+    required double localW,
+    required double localH,
+  }) {
+    if (!_isInputActive()) {
+      return;
+    }
+    final effectiveWidth = _activeWidth > 0 ? _activeWidth : _hintWidth;
+    final effectiveHeight = _activeHeight > 0 ? _activeHeight : _hintHeight;
+    if (effectiveWidth <= 0 || effectiveHeight <= 0) {
+      return;
+    }
+    final dx = localW > 0 ? event.localPosition.dx / localW : 0.0;
+    final dy = localH > 0 ? event.localPosition.dy / localH : 0.0;
+    final x = dx.clamp(0.0, 1.0).toDouble();
+    final y = dy.clamp(0.0, 1.0).toDouble();
+
+    // Flutter  水平滚动 dx 大于 0 为向右滚动，小于 0 为向左滚动。
+    final vscroll = event.scrollDelta.dy > 0
+        ? -1
+        : (event.scrollDelta.dy < 0 ? 1 : 0);
+    final hscroll = event.scrollDelta.dx > 0
+        ? 1
+        : (event.scrollDelta.dx < 0 ? -1 : 0);
+    if (hscroll == 0 && vscroll == 0) {
+      return;
+    }
+    final service = ref.read(deviceServiceProvider);
+    unawaited(
+      service.sendScrollInput(
+        x: x,
+        y: y,
+        width: effectiveWidth,
+        height: effectiveHeight,
+        hscroll: hscroll,
+        vscroll: vscroll,
+      ),
+    );
+  }
+
+  /// 说明：将 Flutter 的 LogicalKeyboardKey 映射到 Android 的 KeyCode。
+  int? _mapLogicalKeyToAndroid(LogicalKeyboardKey key) {
+    if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter)
+      return 66;
+    if (key == LogicalKeyboardKey.backspace) return 67;
+    if (key == LogicalKeyboardKey.tab) return 61;
+    if (key == LogicalKeyboardKey.space) return 62;
+    if (key == LogicalKeyboardKey.escape) return 111;
+    if (key == LogicalKeyboardKey.delete) return 112;
+    if (key == LogicalKeyboardKey.arrowUp) return 19;
+    if (key == LogicalKeyboardKey.arrowDown) return 20;
+    if (key == LogicalKeyboardKey.arrowLeft) return 21;
+    if (key == LogicalKeyboardKey.arrowRight) return 22;
+
+    // 修饰键映射（保证 Ctrl+C / Ctrl+V 等组合键可被设备端识别）。
+    if (key == LogicalKeyboardKey.controlLeft) return 113;
+    if (key == LogicalKeyboardKey.controlRight) return 114;
+    if (key == LogicalKeyboardKey.shiftLeft) return 59;
+    if (key == LogicalKeyboardKey.shiftRight) return 60;
+    if (key == LogicalKeyboardKey.altLeft) return 57;
+    if (key == LogicalKeyboardKey.altRight) return 58;
+    if (key == LogicalKeyboardKey.metaLeft) return 117;
+    if (key == LogicalKeyboardKey.metaRight) return 118;
+
+    // 常用符号键映射。
+    if (key == LogicalKeyboardKey.period ||
+        key == LogicalKeyboardKey.numpadDecimal)
+      return 56;
+    if (key == LogicalKeyboardKey.comma) return 55;
+    if (key == LogicalKeyboardKey.slash ||
+        key == LogicalKeyboardKey.numpadDivide)
+      return 76;
+    if (key == LogicalKeyboardKey.semicolon) return 74;
+    if (key == LogicalKeyboardKey.quote) return 75;
+    if (key == LogicalKeyboardKey.minus ||
+        key == LogicalKeyboardKey.numpadSubtract)
+      return 69;
+    if (key == LogicalKeyboardKey.equal || key == LogicalKeyboardKey.numpadAdd)
+      return 70;
+    if (key == LogicalKeyboardKey.bracketLeft) return 71;
+    if (key == LogicalKeyboardKey.bracketRight) return 72;
+    if (key == LogicalKeyboardKey.backslash) return 73;
+    if (key == LogicalKeyboardKey.backquote) return 68;
+    final label = key.keyLabel;
+    if (label.length == 1) {
+      final code = label.codeUnitAt(0);
+      if (code >= 0x30 && code <= 0x39) return 7 + (code - 0x30);
+      final upper = label.toUpperCase();
+      final upperCode = upper.codeUnitAt(0);
+      if (upperCode >= 0x41 && upperCode <= 0x5A)
+        return 29 + (upperCode - 0x41);
+    }
+    return null;
+  }
+
   @override
   void dispose() {
     Log.i('VideoView dispose begin: backend=${widget.backend.name}');
@@ -432,6 +665,7 @@ class _VideoViewState extends ConsumerState<VideoView>
     // 先取消 gate，再停 runtime，避免 dispose 期间再次触发 start。
     _statusSub?.cancel();
     _statusSub = null;
+    _keyboardFocusNode.dispose();
     // 明确告诉分析器：这里故意不等待，避免 dispose 阻塞 UI 线程。
     unawaited(_stopRuntimeIfNeeded(fromDispose: true));
     Log.i('VideoView dispose end');
@@ -504,8 +738,7 @@ class _VideoViewState extends ConsumerState<VideoView>
                     }
 
                     // 触控 Listener 包裹 Texture。
-                    return buildTouchListener(
-                      child: Texture(textureId: _textureId!),
+                    return _buildInteractiveSurface(
                       localW: localW,
                       localH: localH,
                     );
@@ -562,8 +795,3 @@ class _VideoViewState extends ConsumerState<VideoView>
   @override
   String get touchDebugLabel => 'VideoView(${widget.backend.name})';
 }
-
-
-
-
-
