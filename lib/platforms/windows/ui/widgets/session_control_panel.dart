@@ -1,273 +1,349 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sw_game_helper/enums/connection_mode.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:sw_game_helper/models/device_info.dart';
-import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
 import 'package:sw_game_helper/platforms/windows/providers/device_provider.dart';
-import 'package:sw_game_helper/platforms/windows/service/device_service.dart';
-import 'package:sw_game_helper/platforms/windows/ui/widgets/pill_toggle.dart';
-
-import 'package:sw_game_helper/platforms/windows/ui/widgets/styled_dropdown.dart';
-import 'package:sw_game_helper/platforms/windows/ui/widgets/styled_icon_button.dart';
-import 'package:sw_game_helper/platforms/windows/ui/widgets/video_view.dart';
+import 'package:sw_game_helper/platforms/windows/providers/settings_provider.dart';
+import 'package:sw_game_helper/platforms/windows/ui/widgets/panel_primitives.dart';
 import 'package:sw_game_helper/style/app_tokens.dart';
 import 'package:sw_game_helper/utils/logger_service.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
-/// 会话控制面板
-/// 包含 USB 和 WiFi 连接模式的控制面板
+/// 会话控制面板（统一设备列表版）。
 class SessionControlPanel extends ConsumerStatefulWidget {
-  /// 面板中修改解码方式回调
-  final ValueChanged<VideoRenderBackend>? onRenderBackendChanged;
+  /// 构造函数。
+  const SessionControlPanel({super.key});
 
-  /// 构造函数
-  /// [onRenderBackendChanged] 修改解码方式回调
-  const SessionControlPanel({super.key, this.onRenderBackendChanged});
-
+  /// 创建状态对象。
   @override
-  ConsumerState<SessionControlPanel> createState() => _ControlPanelState();
+  ConsumerState<SessionControlPanel> createState() =>
+      _SessionControlPanelState();
 }
 
-class _ControlPanelState extends ConsumerState<SessionControlPanel> {
-  /// 当前选中选项
-  late String currentSelectOption = 'usb';
+/// 会话控制面板状态。
+class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
+    with SingleTickerProviderStateMixin {
+  /// 当前选中的设备 ID。
+  String? _selectedDeviceId;
 
-  /// 连接按钮被点击
-  late bool disablePillBtn = false;
+  /// 当前是否处于已连接状态。
+  bool _isConnected = false;
+
+  /// 刷新图标旋转控制器（加载中持续旋转）。
+  late final AnimationController _refreshRotationController;
+
+  /// 当前是否正在播放刷新旋转动画。
+  bool _isRefreshAnimating = false;
 
   @override
+  void initState() {
+    super.initState();
+    // 初始化刷新图标旋转控制器。
+    _refreshRotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+  }
+
+  @override
+  void dispose() {
+    // 释放动画控制器资源，避免内存泄漏。
+    _refreshRotationController.dispose();
+    super.dispose();
+  }
+
+  /// 同步刷新图标旋转状态：
+  /// - 加载中：循环旋转；
+  /// - 非加载：停止并重置到初始角度。
+  void _syncRefreshRotation(bool isLoading) {
+    if (isLoading && !_isRefreshAnimating) {
+      _refreshRotationController.repeat();
+      _isRefreshAnimating = true;
+      return;
+    }
+    if (!isLoading && _isRefreshAnimating) {
+      _refreshRotationController.stop();
+      _refreshRotationController.reset();
+      _isRefreshAnimating = false;
+    }
+  }
+
+  /// 执行连接逻辑。
+  Future<void> _connectSelectedDevice(
+    AppDeviceInfo selectedDevice,
+    AppSettings appSettings,
+  ) async {
+    setState(() => _isConnected = true);
+    try {
+      final deviceService = ref.read(deviceServiceProvider);
+      final success = await deviceService.connectDevice(
+        selectedDevice,
+        renderPipelineMode: appSettings.renderPipelineMode,
+        decoderMode: appSettings.decoderMode,
+        turnScreenOff: appSettings.turnScreenOffOnConnect,
+      );
+      if (!success) {
+        setState(() => _isConnected = false);
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('连接失败')));
+        }
+      }
+    } catch (e) {
+      setState(() => _isConnected = false);
+      Log.e('Connection error: $e');
+    }
+  }
+
+  /// 执行断开逻辑。
+  Future<void> _disconnectDevice() async {
+    setState(() => _isConnected = false);
+    try {
+      final deviceService = ref.read(deviceServiceProvider);
+      final device = deviceService.connectedDevice;
+      if (device == null) {
+        Log.w('Disconnection skipped: no connected device');
+        return;
+      }
+      await deviceService.disconnectDevice(device);
+    } catch (e) {
+      Log.e('Disconnection error: $e');
+    }
+  }
+
+  /// 处理顶部按钮点击（连接/断开合并）。
+  Future<void> _onActionButtonClick(
+    List<AppDeviceInfo> devices,
+    AppSettings appSettings,
+  ) async {
+    if (_isConnected) {
+      await _disconnectDevice();
+      return;
+    }
+    final selected = devices.cast<AppDeviceInfo?>().firstWhere(
+      (d) => d?.deviceId == _selectedDeviceId,
+      orElse: () => null,
+    );
+    if (selected == null) {
+      return;
+    }
+    await _connectSelectedDevice(selected, appSettings);
+  }
+
+  /// 构建标题行（含连接按钮与刷新按钮）。
+  Widget _buildHeaderRow(
+    BuildContext context, {
+    required bool isLoading,
+    required bool canConnect,
+    required List<AppDeviceInfo> devices,
+    required AppSettings appSettings,
+  }) {
+    final actionLabel = _isConnected ? '断开设备' : '连接设备';
+    final actionIcon = _isConnected ? LucideIcons.unlink2 : LucideIcons.link2;
+    // 连接状态使用主按钮；已连接后切换为危险按钮，语义更明确。
+    final actionStyle = _isConnected
+        ? PanelPrimitives.compactDangerButtonStyle(context)
+        : PanelPrimitives.compactPrimaryButtonStyle(context);
+
+    return SizedBox(
+      height: 40,
+      child: Row(
+        children: [
+          Icon(
+            LucideIcons.smartphone,
+            size: 16,
+            color: AppTokens.iconSecondary(context),
+          ),
+          SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Text(
+              '选择设备',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppTokens.textPrimary(context),
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 34,
+            child: ElevatedButton.icon(
+              style: actionStyle,
+              onPressed: canConnect && !isLoading
+                  ? () => _onActionButtonClick(devices, appSettings)
+                  : null,
+              icon: Icon(actionIcon, size: 14),
+              label: Text(actionLabel),
+            ),
+          ),
+          SizedBox(width: AppSpacing.xs),
+          // 刷新按钮改为与连接按钮同体系的紧凑次按钮，避免风格割裂。
+          SizedBox(
+            width: 34,
+            height: 34,
+            child: ElevatedButton(
+              style: PanelPrimitives.compactSecondaryButtonStyle(context)
+                  .copyWith(
+                    minimumSize: const WidgetStatePropertyAll(Size(34, 34)),
+                    padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+                  ),
+              onPressed: isLoading
+                  ? null
+                  : () {
+                      setState(() {
+                        _selectedDeviceId = null;
+                        _isConnected = false;
+                      });
+                      ref.invalidate(allDevicesProvider);
+                    },
+              child: RotationTransition(
+                turns: _refreshRotationController,
+                child: const Icon(LucideIcons.refreshCw, size: 15),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 构建面板主体。
+  @override
   Widget build(BuildContext context) {
-    /// 选项列表
-    List<PillOption> options = ConnectionMode.values
-        .map((e) => PillOption(e.code, e.label))
-        .toList();
+    final devicesAsync = ref.watch(allDevicesProvider);
+    // 根据加载状态同步刷新图标旋转动画。
+    _syncRefreshRotation(devicesAsync.isLoading);
+    final appSettings = ref.watch(settingsProvider);
+    final devices = devicesAsync.value ?? const <AppDeviceInfo>[];
+    final canConnect = _isConnected || _selectedDeviceId != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        PillToggle(
-          selectedValue: currentSelectOption,
-          options: options,
-          // 值改变回调，更新当前选中选项
-          onChanged: (value) => setState(() => currentSelectOption = value),
-          isEnable: !disablePillBtn,
+        const PanelSectionTitle(title: '设备连接'),
+        SizedBox(height: AppSpacing.xs),
+        const PanelHintText(text: '列表展示 USB/WiFi 设备，选择后可直接连接。'),
+        SizedBox(height: AppSpacing.sm),
+        _buildHeaderRow(
+          context,
+          isLoading: devicesAsync.isLoading,
+          canConnect: canConnect,
+          devices: devices,
+          appSettings: appSettings,
         ),
-        SizedBox(height: AppSpacing.md),
-        // 用 Expanded 包裹子面板，让高度约束传递下去
-        if (currentSelectOption == 'usb')
-          Expanded(
-            child: UsbSettingsPanel(
-              onRenderBackendChanged: widget.onRenderBackendChanged,
-              onConnectBtnClick: () {
-                setState(() {
-                  disablePillBtn = !disablePillBtn;
-                });
-              },
+        SizedBox(height: AppSpacing.sm),
+        Expanded(
+          child: PanelSectionCard(
+            child: _DeviceListSection(
+              devices: devices,
+              isLoading: devicesAsync.isLoading,
+              hasError: devicesAsync.hasError,
+              selectedDeviceId: _selectedDeviceId,
+              onSelectDevice: (deviceId) =>
+                  setState(() => _selectedDeviceId = deviceId),
             ),
           ),
-        if (currentSelectOption == 'wifi') Expanded(child: WifiSettingsPanel()),
+        ),
       ],
     );
   }
 }
 
-class UsbSettingsPanel extends ConsumerStatefulWidget {
-  /// USB 面板中修改解码方式回调
-  final ValueChanged<VideoRenderBackend>? onRenderBackendChanged;
+/// 设备列表区域。
+class _DeviceListSection extends StatelessWidget {
+  final List<AppDeviceInfo> devices;
+  final bool isLoading;
+  final bool hasError;
+  final String? selectedDeviceId;
+  final ValueChanged<String?> onSelectDevice;
 
-  final VoidCallback? onConnectBtnClick;
-
-  /// 构造函数
-  /// [onRenderBackendChanged] 修改解码方式回调
-  /// [onConnectBtnClick] 连接按钮点击回调
-  const UsbSettingsPanel({
-    super.key,
-    this.onRenderBackendChanged,
-    this.onConnectBtnClick,
+  /// 构造函数。
+  const _DeviceListSection({
+    required this.devices,
+    required this.isLoading,
+    required this.hasError,
+    required this.selectedDeviceId,
+    required this.onSelectDevice,
   });
 
-  @override
-  ConsumerState<UsbSettingsPanel> createState() => _UsbSettingsPanelState();
-}
-
-class _UsbSettingsPanelState extends ConsumerState<UsbSettingsPanel> {
-  /// 当前选中的设备 ID
-  String? selectedDeviceId;
-
-  /// 当前视频解码路径为CPU解码
-  RenderPipelineMode _renderPipelineMode = RenderPipelineMode.cpuPixelBufferV2;
-
-  DeviceDecoderMode _decoderMode = DeviceDecoderMode.preferHardware;
-
-  /// 连接后是否请求设备熄屏。
-  ///
-  /// 语义：
-  /// - true: Rust 会在会话建链成功后请求设备熄屏；
-  /// - false: 不主动修改设备屏幕电源状态（默认亮屏）。
-  bool _turnScreenOffOnConnect = false;
-  bool _isConnected = false;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.onRenderBackendChanged?.call(VideoRenderBackend.cpuPixelBuffer);
+  /// 构建单个设备连接类型标签。
+  Widget _buildModeBadge(BuildContext context, AppDeviceInfo device) {
+    final isUsb = device.connectionMode.code == 'usb';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: isUsb
+            ? AppTokens.primary(context).withValues(alpha: 0.12)
+            : AppTokens.success(context).withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        isUsb ? 'USB' : 'WiFi',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: isUsb
+              ? AppTokens.primary(context)
+              : AppTokens.success(context),
+        ),
+      ),
+    );
   }
 
-  /// 解码链路选择器
-  String _renderPipelineLabel(RenderPipelineMode mode) {
-    return switch (mode) {
-      RenderPipelineMode.original => 'Original',
-      RenderPipelineMode.cpuPixelBufferV2 => 'CPU PixelBuffer V2',
-    };
-  }
-
-  /// 解码选择器
-  String _decoderModeLabel(DeviceDecoderMode mode) {
-    return switch (mode) {
-      DeviceDecoderMode.preferHardware => 'Prefer HW',
-      DeviceDecoderMode.forceHardware => 'Force HW',
-      DeviceDecoderMode.forceSoftware => 'Force SW',
-    };
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final devices = ref.watch(usbDevicesProvider);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // ===== 标题行 =====
-        Row(
-          children: [
-            // 图标
-            Icon(
-              LucideIcons.plug,
-              size: 18,
-              color: AppTokens.iconSecondary(context),
-            ),
-            SizedBox(width: AppSpacing.sm),
-            // 标题
-            Expanded(
-              child: Text(
-                '选择 USB 设备',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppTokens.textPrimary(context),
-                ),
-              ),
-            ),
-            // 刷新按钮
-            StyledIconButton(
-              iconData: LucideIcons.refreshCw,
-              iconSize: 16,
-              isLoading: devices.isLoading,
-              onPressed: () {
-                setState(() => selectedDeviceId = null);
-                ref.invalidate(usbDevicesProvider);
-              },
-            ),
-          ],
-        ),
-        SizedBox(height: AppSpacing.md),
-        // ===== 下拉框 (全宽) =====
-        StyledDropdown<AppDeviceInfo>(
-          isLoading: devices.isLoading,
-          value: selectedDeviceId != null && devices.hasValue
-              ? devices.value!.cast<AppDeviceInfo?>().firstWhere(
-                  (e) => e?.deviceId == selectedDeviceId,
-                  orElse: () => null,
-                )
-              : null,
-          hint: devices.hasError ? '加载失败，请刷新' : '请选择设备',
-          items: (devices.value ?? [])
-              .map(
-                (d) => DropdownItem(
-                  value: d,
-                  label: d.name,
-                  leadingIcon: LucideIcons.smartphone,
-                ),
-              )
-              .toList(),
-          onChanged: (selectedDevice) =>
-              setState(() => selectedDeviceId = selectedDevice.deviceId),
-        ),
-        SizedBox(height: AppSpacing.sm),
-        StyledDropdown<RenderPipelineMode>(
-          isLoading: false,
-          value: _renderPipelineMode,
-          hint: '渲染链路',
-          items: RenderPipelineMode.values
-              .map(
-                (mode) => DropdownItem(
-                  value: mode,
-                  label: _renderPipelineLabel(mode),
-                  leadingIcon: LucideIcons.smartphone,
-                ),
-              )
-              .toList(),
-          onChanged: (mode) {
-            setState(() => _renderPipelineMode = mode);
-
-            widget.onRenderBackendChanged?.call(
-              mode == RenderPipelineMode.original
-                  ? VideoRenderBackend.dxgi
-                  : VideoRenderBackend.cpuPixelBuffer,
-            );
-          },
-        ),
-        SizedBox(height: AppSpacing.sm),
-        // 一行布局：左侧解码模式下拉框，右侧熄屏开关。
-        // 关键点：给下拉框和右侧开关区都加 Expanded/Flexible 约束，避免 Row 溢出。
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
-          ),
+  /// 构建设备行。
+  Widget _buildDeviceTile(BuildContext context, AppDeviceInfo device) {
+    final isSelected = selectedDeviceId == device.deviceId;
+    // 设备主标题：直接拼接“品牌 + 型号”，不再展示“品牌:”第二行文案。
+    final brand = device.brand;
+    final displayName =
+        (brand != null && brand.trim().isNotEmpty && brand != 'Unknown')
+        ? '$brand ${device.name}'
+        : device.name;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        // 再次点击已选中设备时取消选中，便于用户快速回退选择。
+        onTap: () => onSelectDevice(isSelected ? null : device.deviceId),
+        child: Container(
+          // 设备列表项关闭内部动画，主题切换时仅跟随全局主题过渡，避免二次闪变。
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 7),
           decoration: BoxDecoration(
-            color: AppTokens.cardSecondary(context),
-            borderRadius: BorderRadius.circular(AppSpacing.md),
+            // 与设置面板输入控件统一为第三级容器色：
+            // 选中态仅通过边框和文字权重体现，避免底色跳变。
+            color: AppTokens.cardHighlight(context),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            border: Border.all(
+              color: isSelected
+                  ? AppTokens.primary(context)
+                  : AppTokens.divider(context),
+            ),
           ),
           child: Row(
             children: [
-              Expanded(
-                flex: 6,
-                child: StyledDropdown<DeviceDecoderMode>(
-                  isLoading: false,
-                  value: _decoderMode,
-                  hint: '解码模式',
-                  items: DeviceDecoderMode.values
-                      .map(
-                        (mode) => DropdownItem(
-                          value: mode,
-                          label: _decoderModeLabel(mode),
-                          leadingIcon: LucideIcons.smartphone,
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (mode) => setState(() => _decoderMode = mode),
-                ),
+              Icon(
+                LucideIcons.smartphone,
+                size: 16,
+                color: isSelected
+                    ? AppTokens.primary(context)
+                    : AppTokens.iconSecondary(context),
               ),
-              SizedBox(width: AppSpacing.md),
+              SizedBox(width: AppSpacing.sm),
               Expanded(
-                flex: 4,
                 child: Row(
                   children: [
-                    Icon(
-                      LucideIcons.moon,
-                      size: 16,
-                      color: AppTokens.iconSecondary(context),
-                    ),
+                    _buildModeBadge(context, device),
                     SizedBox(width: AppSpacing.xs),
                     Expanded(
                       child: Text(
-                        '手机熄屏',
+                        displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w600,
                           color: AppTokens.textPrimary(context),
                         ),
                       ),
@@ -275,149 +351,47 @@ class _UsbSettingsPanelState extends ConsumerState<UsbSettingsPanel> {
                   ],
                 ),
               ),
-              Switch(
-                value: _turnScreenOffOnConnect,
-                onChanged: _isConnected
-                    ? null
-                    : (value) =>
-                          setState(() => _turnScreenOffOnConnect = value),
-              ),
+              if (isSelected)
+                Icon(
+                  Icons.check_circle,
+                  size: 16,
+                  color: AppTokens.primary(context),
+                ),
             ],
-          ),
-        ),
-        Spacer(),
-        // ===== 连接按钮 (CTA) =====
-        Row(
-          children: [
-            Expanded(
-              flex: 1,
-              child: ElevatedButton.icon(
-                // 已连接状态下禁用按钮
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                    vertical: AppSpacing.xl - 4,
-                  ),
-                ),
-                onPressed: selectedDeviceId != null && !_isConnected
-                    ? () async {
-                        setState(() => _isConnected = true);
-                        // 调用外部连接按钮点击回调,锁定药丸按钮点击事件
-                        widget.onConnectBtnClick?.call();
-
-                        try {
-                          final deviceService = ref.read(deviceServiceProvider);
-                          final devices =
-                              ref.read(usbDevicesProvider).value ?? [];
-                          final device = devices.firstWhere(
-                            (e) => e.deviceId == selectedDeviceId,
-                          );
-
-                          final success = await deviceService.connectDevice(
-                            device,
-                            renderPipelineMode: _renderPipelineMode,
-                            decoderMode: _decoderMode,
-                            // 关键透传：true=连接后熄屏，false=默认亮屏。
-                            turnScreenOff: _turnScreenOffOnConnect,
-                          );
-                          if (!success) {
-                            setState(() => _isConnected = false);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(
-                                context,
-                              ).showSnackBar(SnackBar(content: Text('连接失败')));
-                            }
-                          }
-                        } catch (e) {
-                          setState(() => _isConnected = false);
-                          Log.e('Connection error: $e');
-                        }
-                      }
-                    : null,
-                icon: Icon(LucideIcons.link2, size: 16),
-                label: Text('连接设备'),
-              ),
-            ),
-            SizedBox(width: AppSpacing.md),
-            Expanded(
-              flex: 1,
-              child: ElevatedButton.icon(
-                // 已连接状态下禁用按钮
-                style: ElevatedButton.styleFrom(
-                  // 使用 Theme ColorScheme，确保明暗主题切换时颜色过渡一致、避免闪烁。
-                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
-                  disabledBackgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest,
-                  foregroundColor: Theme.of(
-                    context,
-                  ).colorScheme.onErrorContainer,
-                  disabledForegroundColor: Theme.of(
-                    context,
-                  ).colorScheme.onSurfaceVariant,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                    vertical: AppSpacing.xl - 4,
-                  ),
-                ),
-                onPressed: selectedDeviceId != null && _isConnected
-                    ? () async {
-                        setState(() => _isConnected = false);
-                        // 调用外部连接按钮点击回调,解锁药丸按钮点击事件
-                        widget.onConnectBtnClick?.call();
-                        try {
-                          final deviceService = ref.read(deviceServiceProvider);
-                          final device = deviceService.connectedDevice;
-                          if (device == null) {
-                            Log.w('Disconnection skipped: no connected device');
-                            return;
-                          }
-                          await deviceService.disconnectDevice(device);
-                        } catch (e) {
-                          Log.e('Disconnection error: $e');
-                        }
-                      }
-                    : null,
-                icon: Icon(LucideIcons.unlink2, size: 16),
-                label: Text(
-                  '断开设备',
-                  style: TextStyle(fontWeight: FontWeight.w400),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class WifiSettingsPanel extends ConsumerStatefulWidget {
-  /// 构造函数
-  const WifiSettingsPanel({super.key});
-
-  @override
-  ConsumerState<WifiSettingsPanel> createState() => _WifiSettingsPanelState();
-}
-
-class _WifiSettingsPanelState extends ConsumerState<WifiSettingsPanel> {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      child: Center(
-        child: Text(
-          'Wi-Fi 连接设置',
-          style: TextStyle(
-            color: AppTokens.textPrimary(context),
-            fontWeight: FontWeight.w600,
           ),
         ),
       ),
     );
   }
+
+  /// 构建设备列表。
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    if (hasError) {
+      return Center(
+        child: Text(
+          '设备加载失败，请刷新',
+          style: TextStyle(color: AppTokens.error(context)),
+        ),
+      );
+    }
+    if (devices.isEmpty) {
+      return Center(
+        child: Text(
+          '未检测到设备',
+          style: TextStyle(color: AppTokens.textSecondary(context)),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      itemCount: devices.length,
+      separatorBuilder: (_, _) => SizedBox(height: AppSpacing.xs),
+      itemBuilder: (context, index) =>
+          _buildDeviceTile(context, devices[index]),
+    );
+  }
 }
-
-
-
-
-

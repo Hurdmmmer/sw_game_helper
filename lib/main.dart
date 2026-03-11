@@ -39,6 +39,9 @@ class SwHelper extends ConsumerStatefulWidget {
 }
 
 class _MainAppState extends ConsumerState<SwHelper> {
+  /// 全局主题切换动画时长（与按钮等控件保持一致）。
+  static const Duration _themeTransitionDuration = Duration(milliseconds: 120);
+
   // 默认亮色，符合当前产品视觉方向。
   ThemeMode _themeMode = ThemeMode.light;
 
@@ -58,6 +61,16 @@ class _MainAppState extends ConsumerState<SwHelper> {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _themeMode,
+      // 统一全局主题过渡时长与曲线，避免各控件动画节奏不一致。
+      themeAnimationDuration: _themeTransitionDuration,
+      themeAnimationCurve: Curves.easeOutCubic,
+      // Windows 平台在部分复杂自定义控件+Overlay 场景下会触发 AXTree pending 报错。
+      // 这里先关闭语义树上报作为稳定性兜底，避免应用断连退出。
+      // 说明：该方案会影响屏幕阅读器可访问性能力，仅作为当前阶段的工程性止血方案。
+      builder: (context, child) => ExcludeSemantics(
+        excluding: true,
+        child: child ?? const SizedBox.shrink(),
+      ),
       home: HomePage(onThemeToggle: _toggleTheme),
     );
   }

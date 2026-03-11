@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:sw_game_helper/style/app_tokens.dart';
-import 'package:sw_game_helper/utils/logger_service.dart';
 import 'package:window_manager/window_manager.dart';
 
 class OptionItem<T> {
@@ -17,8 +16,9 @@ class OptionItem<T> {
 /// - 使用 `WindowCaption` 承载系统窗口按钮，保持 Win11 行为一致性。
 class TopNavBar extends StatefulWidget {
   final VoidCallback? onThemeToggle;
+  final ValueChanged<String>? onNavChanged;
 
-  const TopNavBar({super.key, this.onThemeToggle});
+  const TopNavBar({super.key, this.onThemeToggle, this.onNavChanged});
 
   @override
   State<TopNavBar> createState() => _TopNavBarState();
@@ -58,7 +58,10 @@ class _TopNavBarState extends State<TopNavBar> {
                         optionItem: OptionItem(
                           '首 页',
                           'home',
-                          () => setState(() => _currentValue = 'home'),
+                          () {
+                            setState(() => _currentValue = 'home');
+                            widget.onNavChanged?.call('home');
+                          },
                         ),
                       ),
                       const SizedBox(width: 28),
@@ -66,7 +69,10 @@ class _TopNavBarState extends State<TopNavBar> {
                         optionItem: OptionItem(
                           '设 置',
                           'settings',
-                          () => setState(() => _currentValue = 'settings'),
+                          () {
+                            setState(() => _currentValue = 'settings');
+                            widget.onNavChanged?.call('settings');
+                          },
                         ),
                       ),
                       const SizedBox(width: 28),
@@ -74,7 +80,10 @@ class _TopNavBarState extends State<TopNavBar> {
                         optionItem: OptionItem(
                           '关 于',
                           'about',
-                          () => setState(() => _currentValue = 'about'),
+                          () {
+                            setState(() => _currentValue = 'about');
+                            widget.onNavChanged?.call('about');
+                          },
                         ),
                       ),
                     ],

@@ -310,6 +310,34 @@ class DeviceServiceImpl extends DeviceService {
     return info.deviceId;
   }
 
+  /// 基于设备型号做品牌推断。
+  /// 说明：当前 Rust Bridge 未返回 manufacturer 字段，这里用型号前缀兜底推断。
+  static String _inferBrand(DeviceInfo info) {
+    final model = info.model.trim().toUpperCase();
+    if (model.startsWith('SM-') || model.startsWith('SAMSUNG')) {
+      return 'Samsung';
+    }
+    if (model.startsWith('M') || model.contains('XIAOMI') || model.contains('REDMI')) {
+      return 'Xiaomi';
+    }
+    if (model.contains('VIVO')) {
+      return 'vivo';
+    }
+    if (model.contains('OPPO') || model.contains('PCH') || model.contains('CPH')) {
+      return 'OPPO';
+    }
+    if (model.contains('PIXEL') || model.contains('GOOGLE')) {
+      return 'Google';
+    }
+    if (model.contains('ONEPLUS') || model.startsWith('NE') || model.startsWith('LE')) {
+      return 'OnePlus';
+    }
+    if (model.contains('HUAWEI') || model.contains('HONOR')) {
+      return 'Huawei';
+    }
+    return 'Unknown';
+  }
+
   static String _capitalize(String input) {
     if (input.isEmpty) return input;
     return input[0].toUpperCase() + input.substring(1);
@@ -349,6 +377,7 @@ class DeviceServiceImpl extends DeviceService {
         final ip = d.ip?.trim();
         return AppDeviceInfo(
           name: _displayName(d),
+          brand: _inferBrand(d),
           deviceId: d.deviceId,
           connectionMode: _modeOf(d),
           connectionStatus: ConnectionStatus.disconnected,

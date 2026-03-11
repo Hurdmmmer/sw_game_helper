@@ -5,6 +5,9 @@ import 'package:sw_game_helper/style/app_tokens.dart';
 class AppTheme {
   AppTheme._();
 
+  /// 按钮内部状态动画时长：设为 0，避免与主题动画叠加导致闪变。
+  static const Duration _buttonStateMotionDuration = Duration.zero;
+
   static const String _baseFontFamily = 'Microsoft YaHei UI';
 
   static const List<String> _fontFallback = [
@@ -38,21 +41,93 @@ class AppTheme {
 
   static TextTheme _buildTextTheme(ColorScheme scheme) {
     return TextTheme(
-      displayLarge: _textStyle(size: 34, weight: FontWeight.w700, color: scheme.onSurface, height: 1.2),
-      displayMedium: _textStyle(size: 30, weight: FontWeight.w700, color: scheme.onSurface, height: 1.2),
-      displaySmall: _textStyle(size: 26, weight: FontWeight.w700, color: scheme.onSurface, height: 1.25),
-      headlineLarge: _textStyle(size: 24, weight: FontWeight.w700, color: scheme.onSurface, height: 1.25),
-      headlineMedium: _textStyle(size: 22, weight: FontWeight.w700, color: scheme.onSurface, height: 1.25),
-      headlineSmall: _textStyle(size: 20, weight: FontWeight.w600, color: scheme.onSurface, height: 1.25),
-      titleLarge: _textStyle(size: 18, weight: FontWeight.w600, color: scheme.onSurface, height: 1.3),
-      titleMedium: _textStyle(size: 16, weight: FontWeight.w600, color: scheme.onSurface, height: 1.3),
-      titleSmall: _textStyle(size: 14, weight: FontWeight.w600, color: scheme.onSurfaceVariant, height: 1.3),
-      bodyLarge: _textStyle(size: 16, weight: FontWeight.w400, color: scheme.onSurface),
-      bodyMedium: _textStyle(size: 14, weight: FontWeight.w400, color: scheme.onSurfaceVariant),
-      bodySmall: _textStyle(size: 12, weight: FontWeight.w400, color: scheme.onSurfaceVariant),
-      labelLarge: _textStyle(size: 14, weight: FontWeight.w600, color: scheme.onSurface, height: 1.25),
-      labelMedium: _textStyle(size: 12, weight: FontWeight.w600, color: scheme.onSurfaceVariant, height: 1.25),
-      labelSmall: _textStyle(size: 11, weight: FontWeight.w500, color: scheme.onSurfaceVariant, height: 1.2),
+      displayLarge: _textStyle(
+        size: 34,
+        weight: FontWeight.w700,
+        color: scheme.onSurface,
+        height: 1.2,
+      ),
+      displayMedium: _textStyle(
+        size: 30,
+        weight: FontWeight.w700,
+        color: scheme.onSurface,
+        height: 1.2,
+      ),
+      displaySmall: _textStyle(
+        size: 26,
+        weight: FontWeight.w700,
+        color: scheme.onSurface,
+        height: 1.25,
+      ),
+      headlineLarge: _textStyle(
+        size: 24,
+        weight: FontWeight.w700,
+        color: scheme.onSurface,
+        height: 1.25,
+      ),
+      headlineMedium: _textStyle(
+        size: 22,
+        weight: FontWeight.w700,
+        color: scheme.onSurface,
+        height: 1.25,
+      ),
+      headlineSmall: _textStyle(
+        size: 20,
+        weight: FontWeight.w600,
+        color: scheme.onSurface,
+        height: 1.25,
+      ),
+      titleLarge: _textStyle(
+        size: 18,
+        weight: FontWeight.w600,
+        color: scheme.onSurface,
+        height: 1.3,
+      ),
+      titleMedium: _textStyle(
+        size: 16,
+        weight: FontWeight.w600,
+        color: scheme.onSurface,
+        height: 1.3,
+      ),
+      titleSmall: _textStyle(
+        size: 14,
+        weight: FontWeight.w600,
+        color: scheme.onSurfaceVariant,
+        height: 1.3,
+      ),
+      bodyLarge: _textStyle(
+        size: 16,
+        weight: FontWeight.w400,
+        color: scheme.onSurface,
+      ),
+      bodyMedium: _textStyle(
+        size: 14,
+        weight: FontWeight.w400,
+        color: scheme.onSurfaceVariant,
+      ),
+      bodySmall: _textStyle(
+        size: 12,
+        weight: FontWeight.w400,
+        color: scheme.onSurfaceVariant,
+      ),
+      labelLarge: _textStyle(
+        size: 14,
+        weight: FontWeight.w600,
+        color: scheme.onSurface,
+        height: 1.25,
+      ),
+      labelMedium: _textStyle(
+        size: 12,
+        weight: FontWeight.w600,
+        color: scheme.onSurfaceVariant,
+        height: 1.25,
+      ),
+      labelSmall: _textStyle(
+        size: 11,
+        weight: FontWeight.w500,
+        color: scheme.onSurfaceVariant,
+        height: 1.2,
+      ),
     );
   }
 
@@ -91,39 +166,48 @@ class AppTheme {
       ),
 
       elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: scheme.primary,
-          foregroundColor: scheme.onPrimary,
-          elevation: 0,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-          ),
-          textStyle: textTheme.labelLarge,
-        ).copyWith(
-          backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) {
-              return scheme.surfaceContainerHighest;
-            }
-            if (states.contains(WidgetState.pressed)) {
-              return scheme.primary.withValues(alpha: 0.88);
-            }
-            if (states.contains(WidgetState.hovered)) {
-              return scheme.primary.withValues(alpha: 0.94);
-            }
-            return scheme.primary;
-          }),
-          foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) {
-              return scheme.onSurfaceVariant;
-            }
-            return scheme.onPrimary;
-          }),
-        ),
+        style:
+            ElevatedButton.styleFrom(
+              backgroundColor: scheme.primary,
+              foregroundColor: scheme.onPrimary,
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.md,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              ),
+              textStyle: textTheme.labelLarge,
+            ).copyWith(
+              // 关闭按钮内部动画，仅保留主题动画，避免亮暗切换出现二次色阶跳变。
+              animationDuration: _buttonStateMotionDuration,
+              // 关闭 M3 表面叠色与阴影，防止中间态出现发白/发黑闪变。
+              elevation: const WidgetStatePropertyAll(0),
+              surfaceTintColor: const WidgetStatePropertyAll(
+                Colors.transparent,
+              ),
+              shadowColor: const WidgetStatePropertyAll(Colors.transparent),
+              backgroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.disabled)) {
+                  return scheme.surfaceContainerHighest;
+                }
+                if (states.contains(WidgetState.pressed)) {
+                  return scheme.primary.withValues(alpha: 0.88);
+                }
+                if (states.contains(WidgetState.hovered)) {
+                  return scheme.primary.withValues(alpha: 0.94);
+                }
+                return scheme.primary;
+              }),
+              foregroundColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.disabled)) {
+                  return scheme.onSurfaceVariant;
+                }
+                return scheme.onPrimary;
+              }),
+            ),
       ),
 
       textButtonTheme: TextButtonThemeData(
@@ -233,7 +317,9 @@ class AppTheme {
         selectedColor: scheme.primaryContainer,
         secondarySelectedColor: scheme.tertiaryContainer,
         labelStyle: textTheme.bodyMedium!,
-        secondaryLabelStyle: textTheme.bodyMedium!.copyWith(color: scheme.primary),
+        secondaryLabelStyle: textTheme.bodyMedium!.copyWith(
+          color: scheme.primary,
+        ),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.xs,

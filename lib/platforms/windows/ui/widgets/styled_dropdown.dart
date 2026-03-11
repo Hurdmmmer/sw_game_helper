@@ -206,25 +206,37 @@ class _TriggerButton extends StatefulWidget {
 
 class _TriggerButtonState extends State<_TriggerButton> {
   bool _isHovered = false;
+
+  /// 延迟更新悬停状态，避免 MouseTracker 更新阶段重入 setState。
+  void _updateHoverDeferred(bool hovered) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      if (_isHovered == hovered) {
+        return;
+      }
+      setState(() => _isHovered = hovered);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     // MouseRegion 用于监听鼠标事件，更新 hover 状态
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      onEnter: (_) => _updateHoverDeferred(true),
+      onExit: (_) => _updateHoverDeferred(false),
       cursor: widget.isEnabled
           ? SystemMouseCursors.click
           : SystemMouseCursors.basic,
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md, // 12px
-          vertical: AppSpacing.sm + 2, // 10px
+          vertical: AppSpacing.sm + 1, // 9px
         ),
         decoration: BoxDecoration(
-          // 背景色：hover 时使用 highlight，否则 secondary
-          color: _isHovered && widget.isEnabled
-              ? AppTokens.cardHighlight(context)
-              : AppTokens.cardSecondary(context),
+          // 背景色：统一使用三级容器色，保证与设备列表项同层级。
+          color: AppTokens.cardHighlight(context),
           // 8px 圆角
           borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
           // 边框
@@ -376,11 +388,25 @@ class _DropdownMenuItem<T> extends StatefulWidget {
 
 class _DropdownMenuItemState<T> extends State<_DropdownMenuItem<T>> {
   bool _isHovered = false;
+
+  /// 延迟更新悬停状态，避免 MouseTracker 更新阶段重入 setState。
+  void _updateHoverDeferred(bool hovered) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      if (_isHovered == hovered) {
+        return;
+      }
+      setState(() => _isHovered = hovered);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      onEnter: (_) => _updateHoverDeferred(true),
+      onExit: (_) => _updateHoverDeferred(false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: widget.onTap,
@@ -388,7 +414,7 @@ class _DropdownMenuItemState<T> extends State<_DropdownMenuItem<T>> {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm + 2,
+            vertical: AppSpacing.sm + 1,
           ),
           color: _isHovered
               ? AppTokens.primary(context).withValues(alpha: 0.08)

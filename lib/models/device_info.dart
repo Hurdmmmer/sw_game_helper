@@ -5,6 +5,9 @@ class AppDeviceInfo {
   /// 设备名称（通常是型号）
   final String name;
 
+  /// 设备品牌（如 Samsung、Xiaomi），用于列表展示。
+  final String? brand;
+
   /// 设备ID
   final String deviceId;
 
@@ -32,6 +35,7 @@ class AppDeviceInfo {
   /// 设备信息构造函数
   AppDeviceInfo({
     required this.name,
+    this.brand,
     required this.deviceId,
     required this.connectionMode,
     required this.connectionStatus,

@@ -52,21 +52,21 @@ class PillToggle extends StatelessWidget {
         : -1.0 + (safeIndex * 2.0 / (options.length - 1));
 
     return SizedBox(
-      // 固定高度，避免在不稳定约束下出现 RenderBox not laid out。
-      height: 48,
+      // 固定高度，统一与紧凑按钮视觉节奏。
+      height: 42,
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: AppTokens.cardSecondary(context),
-          borderRadius: BorderRadius.circular(64),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
           border: Border.all(color: AppTokens.divider(context), width: 1),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(4),
+          padding: const EdgeInsets.all(3),
           child: Stack(
             fit: StackFit.expand,
             children: [
               AnimatedAlign(
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 120),
                 curve: Curves.easeInOut,
                 alignment: Alignment(alignmentX, 0),
                 child: FractionallySizedBox(
@@ -75,18 +75,11 @@ class PillToggle extends StatelessWidget {
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: AppTokens.primary(context),
-                      borderRadius: BorderRadius.circular(60),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                       border: Border.all(
                         color: AppTokens.divider(context),
                         width: 1,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTokens.shadow(context),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
                     ),
                   ),
                 ),
@@ -103,8 +96,9 @@ class PillToggle extends StatelessWidget {
                           option.label,
                           style: TextStyle(
                             color: isSelected
-                                ? Colors.white
+                                ? AppTokens.textOnPrimary(context)
                                 : AppTokens.textTertiary(context),
+                            fontSize: 13,
                             fontWeight: isSelected
                                 ? FontWeight.w600
                                 : FontWeight.normal,

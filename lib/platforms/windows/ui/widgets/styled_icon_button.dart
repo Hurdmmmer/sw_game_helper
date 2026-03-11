@@ -55,6 +55,19 @@ class _StyledIconButtonState extends State<StyledIconButton>
   /// 旋转动画控制器
   late final AnimationController _rotationController;
 
+  /// 延迟更新悬停状态，避免在 MouseTracker 设备更新阶段同步 setState。
+  void _updateHoverDeferred(bool hovered) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      if (_isHovered == hovered) {
+        return;
+      }
+      setState(() => _isHovered = hovered);
+    });
+  }
+
   // 第一次构建组件时调用该方法，只会执行一次
   @override
   void initState() {
@@ -101,12 +114,8 @@ class _StyledIconButtonState extends State<StyledIconButton>
     // MouseRegion 用于检测鼠标进入/离开按钮区域
     Widget button = MouseRegion(
       // 检测鼠标进入/离开
-      onEnter: (_) => setState(() {
-        _isHovered = true;
-      }),
-      onExit: (_) => setState(() {
-        _isHovered = false;
-      }),
+      onEnter: (_) => _updateHoverDeferred(true),
+      onExit: (_) => _updateHoverDeferred(false),
       // 设置鼠标光标样式
       cursor: widget.onPressed != null
           ? SystemMouseCursors.click
@@ -120,10 +129,12 @@ class _StyledIconButtonState extends State<StyledIconButton>
           width: buttonSize,
           height: buttonSize,
           decoration: BoxDecoration(
+            // 图标按钮与次按钮统一：默认浅底+描边，悬停时提升层级。
             color: _isHovered && widget.onPressed != null
                 ? AppTokens.cardSecondary(context)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(buttonSize / 2),
+                : AppTokens.cardHighlight(context),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            border: Border.all(color: AppTokens.divider(context)),
           ),
           child: Center(
             child: RotationTransition(
