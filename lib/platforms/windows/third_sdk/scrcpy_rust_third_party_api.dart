@@ -28,12 +28,16 @@ class ScrcpyRustThirdPartyApi {
   static final ScrcpyRustThirdPartyApi _instance = ScrcpyRustThirdPartyApi._();
 
   static ScrcpyRustThirdPartyApi get instance => _instance;
-  static const MethodChannel _dxgiBridgeChannel =
-      MethodChannel('dxgi_texture_bridge');
+
+  /// 会话事件桥接通道：
+  /// - Dart -> Runner：bindSessionEvents；
+  /// - Runner -> Dart：onSessionEvent。
+  static const MethodChannel _sessionEventBridgeChannel =
+      MethodChannel('session_event_bridge');
 
   /// 会话事件总线（Rust 回调 -> Runner -> MethodChannel -> Dart）。
-  final StreamController<_SessionEventEnvelope> _sessionEventController =
-      StreamController<_SessionEventEnvelope>.broadcast();
+  final StreamController<_SessionEventEnvelope> _sessionEventController = StreamController<_SessionEventEnvelope>.broadcast();
+
   bool _sessionEventBridgeBound = false;
 
   /// 初始化 Rust DLL 日志级别（仅首次调用生效，后续调用会被 Rust 侧忽略）。
@@ -217,9 +221,11 @@ class ScrcpyRustThirdPartyApi {
       return;
     }
     _sessionEventBridgeBound = true;
-    _dxgiBridgeChannel.setMethodCallHandler(_handleBridgeCallback);
+    _sessionEventBridgeChannel.setMethodCallHandler(_handleBridgeCallback);
     unawaited(
-      _dxgiBridgeChannel.invokeMethod<bool>('bindSessionEvents').catchError((
+      _sessionEventBridgeChannel
+          .invokeMethod<bool>('bindSessionEvents')
+          .catchError((
         Object e,
         StackTrace st,
       ) {

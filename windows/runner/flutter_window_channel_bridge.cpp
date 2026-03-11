@@ -4,9 +4,9 @@
 
 // MethodChannel 分发实现文件。
 //
-// 目的：
-// 1) 把 channel 分发逻辑从 flutter_window.cpp 主文件拆出来；
-// 2) 让窗口生命周期代码与业务方法分发解耦，方便后续维护。
+// 设计目标：
+// 1) 将桥接职责拆分为独立通道，避免“纹理+事件”语义混杂；
+// 2) 把分发逻辑从 flutter_window.cpp 主文件剥离，便于维护。
 
 void FlutterWindow::RegisterWindowTitleChannel() {
   window_title_channel_ =
@@ -17,7 +17,7 @@ void FlutterWindow::RegisterWindowTitleChannel() {
   window_title_channel_->SetMethodCallHandler(
       [this](const flutter::MethodCall<flutter::EncodableValue>& call,
              std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
-                  result) {
+                 result) {
         const auto& method = call.method_name();
         HWND hwnd = GetHandle();
         if (hwnd == nullptr) {
@@ -35,7 +35,8 @@ void FlutterWindow::RegisterWindowTitleChannel() {
           int len =
               MultiByteToWideChar(CP_UTF8, 0, title.c_str(), -1, nullptr, 0);
           std::wstring wide_title(static_cast<size_t>(len), L'\0');
-          MultiByteToWideChar(CP_UTF8, 0, title.c_str(), -1, &wide_title[0], len);
+          MultiByteToWideChar(CP_UTF8, 0, title.c_str(), -1, &wide_title[0],
+                              len);
           SetWindowTextW(hwnd, wide_title.c_str());
           result->Success();
           return;
@@ -45,33 +46,45 @@ void FlutterWindow::RegisterWindowTitleChannel() {
       });
 }
 
-void FlutterWindow::RegisterDxgiTextureBridge() {
-  dxgi_texture_bridge_channel_ =
+void FlutterWindow::RegisterTextureBridge() {
+  // 纹理桥接通道：只承载纹理生命周期方法。
+  texture_bridge_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-          flutter_controller_->engine()->messenger(), "dxgi_texture_bridge",
+          flutter_controller_->engine()->messenger(), "texture_bridge",
           &flutter::StandardMethodCodec::GetInstance());
 
-  dxgi_texture_bridge_channel_->SetMethodCallHandler(
+  texture_bridge_channel_->SetMethodCallHandler(
       [this](const flutter::MethodCall<flutter::EncodableValue>& call,
              std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
-                 result) { HandleDxgiTextureBridgeCall(call, std::move(result)); });
+                 result) {
+        HandleTextureBridgeCall(call, std::move(result));
+      });
 }
 
-bool FlutterWindow::HandleDxgiTextureBridgeCall(
+void FlutterWindow::RegisterSessionEventBridge() {
+  // 会话事件桥接通道：只承载事件绑定与事件回调分发。
+  session_event_bridge_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(), "session_event_bridge",
+          &flutter::StandardMethodCodec::GetInstance());
+
+  session_event_bridge_channel_->SetMethodCallHandler(
+      [this](const flutter::MethodCall<flutter::EncodableValue>& call,
+             std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+                 result) {
+        HandleSessionEventBridgeCall(call, std::move(result));
+      });
+}
+
+bool FlutterWindow::HandleTextureBridgeCall(
     const flutter::MethodCall<flutter::EncodableValue>& call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  // 纹理桥接统一入口：
+  // - 参数必须是 map；
+  // - 只处理纹理相关方法；
+  // - 错误码按操作类型区分，便于 Dart 侧定位。
   const auto& method = call.method_name();
   std::string error;
-
-  // 会话事件绑定不依赖参数，单独处理。
-  if (method == "bindSessionEvents") {
-    if (!BindSessionEvents(&error)) {
-      result->Error("BIND_SESSION_EVENTS_FAILED", error);
-      return true;
-    }
-    result->Success(flutter::EncodableValue(true));
-    return true;
-  }
 
   if (!call.arguments() ||
       !std::holds_alternative<flutter::EncodableMap>(*call.arguments())) {
@@ -125,6 +138,28 @@ bool FlutterWindow::HandleDxgiTextureBridgeCall(
   if (method == "disposeCpuPixelTexture") {
     if (!DisposeCpuPixelTexture(args, &error)) {
       result->Error("DISPOSE_CPU_PIXEL_FAILED", error);
+      return true;
+    }
+    result->Success(flutter::EncodableValue(true));
+    return true;
+  }
+
+  result->NotImplemented();
+  return false;
+}
+
+bool FlutterWindow::HandleSessionEventBridgeCall(
+    const flutter::MethodCall<flutter::EncodableValue>& call,
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  // 事件桥接统一入口：
+  // - 当前只支持 bindSessionEvents；
+  // - 该方法不要求传参数。
+  const auto& method = call.method_name();
+  std::string error;
+
+  if (method == "bindSessionEvents") {
+    if (!BindSessionEvents(&error)) {
+      result->Error("BIND_SESSION_EVENTS_FAILED", error);
       return true;
     }
     result->Success(flutter::EncodableValue(true));

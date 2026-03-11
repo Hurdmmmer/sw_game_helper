@@ -180,11 +180,30 @@ class FlutterWindow : public Win32Window {
 
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       window_title_channel_;
+  /// 纹理桥接通道：
+  /// - Dart -> Runner：create/bind/dispose 纹理；
+  /// - 不承载会话事件绑定与分发。
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
-      dxgi_texture_bridge_channel_;
+      texture_bridge_channel_;
+  /// 会话事件桥接通道：
+  /// - Dart -> Runner：bindSessionEvents（一次性绑定）；
+  /// - Runner -> Dart：onSessionEvent（事件分发）。
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      session_event_bridge_channel_;
 
   void RegisterWindowTitleChannel();
-  void RegisterDxgiTextureBridge();
+  /// 注册纹理桥接通道。
+  ///
+  /// 作用：
+  /// - 建立 MethodChannel `texture_bridge`；
+  /// - 绑定纹理方法分发入口（HandleTextureBridgeCall）。
+  void RegisterTextureBridge();
+  /// 注册会话事件桥接通道。
+  ///
+  /// 作用：
+  /// - 建立 MethodChannel `session_event_bridge`；
+  /// - 绑定事件方法分发入口（HandleSessionEventBridgeCall）。
+  void RegisterSessionEventBridge();
 
   bool CreateTexture(const flutter::EncodableMap& args, int64_t* texture_id,
                      std::string* error);
@@ -197,17 +216,59 @@ class FlutterWindow : public Win32Window {
   bool BindCpuPixelTexture(const flutter::EncodableMap& args, std::string* error);
   // 绑定 V1 DXGI 纹理到 Rust 回调驱动链路。
   bool BindDxgiTexture(const flutter::EncodableMap& args, std::string* error);
-  // 绑定会话事件回调链路（Rust -> Runner -> Dart）。
+  /// 绑定会话事件回调链路（Rust -> Runner -> Dart）。
+  ///
+  /// 调用时机：
+  /// - 由 Dart 侧初始化调用 `bindSessionEvents` 触发；
+  /// - 仅需绑定一次，重复调用幂等。
   bool BindSessionEvents(std::string* error);
   bool DisposeCpuPixelTexture(const flutter::EncodableMap& args,
                               std::string* error);
+  /// 确保 Rust V2 回调已注册（CPU 像素帧路径）。
+  ///
+  /// 参数：
+  /// - error：失败时写入可读错误信息；成功时保持不变。
+  ///
+  /// 返回：
+  /// - true：已注册成功（包含“此前已注册”的幂等成功）；
+  /// - false：注册失败，调用方应中止后续绑定流程。
+  ///
+  /// 失败场景：
+  /// - 无法从 rust_scrcpy.dll 解析注册函数符号；
+  /// - Rust 侧注册函数返回 false。
   bool EnsureRustV2CallbackRegistered(std::string* error);
-  // 注册 V1 回调（共享句柄元信息回调）。
+  /// 确保 Rust V1 回调已注册（共享句柄元信息路径）。
+  ///
+  /// 参数：
+  /// - error：失败时写入可读错误信息；成功时保持不变。
+  ///
+  /// 返回：
+  /// - true：已注册成功（包含“此前已注册”的幂等成功）；
+  /// - false：注册失败，调用方应中止后续绑定流程。
   bool EnsureRustV1CallbackRegistered(std::string* error);
-  // 注册 SessionEvent 回调（JSON 事件回调）。
+  /// 确保 Rust SessionEvent 回调已注册（会话事件 JSON 路径）。
+  ///
+  /// 参数：
+  /// - error：失败时写入可读错误信息；成功时保持不变。
+  ///
+  /// 返回：
+  /// - true：已注册成功（包含“此前已注册”的幂等成功）；
+  /// - false：注册失败，调用方应中止后续事件绑定流程。
   bool EnsureRustSessionEventCallbackRegistered(std::string* error);
-  // dxgi_texture_bridge 方法分发入口（用于收敛 flutter_window.cpp 体积）。
-  bool HandleDxgiTextureBridgeCall(
+  /// 纹理桥接方法分发入口（用于收敛 flutter_window.cpp 体积）。
+  ///
+  /// 承载的方法族：
+  /// - createTexture/createCpuPixelTexture；
+  /// - bindDxgiTexture/bindCpuPixelTexture；
+  /// - disposeTexture/disposeCpuPixelTexture。
+  bool HandleTextureBridgeCall(
+      const flutter::MethodCall<flutter::EncodableValue>& call,
+      std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  /// 会话事件桥接方法分发入口。
+  ///
+  /// 承载的方法族：
+  /// - bindSessionEvents。
+  bool HandleSessionEventBridgeCall(
       const flutter::MethodCall<flutter::EncodableValue>& call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
   void DisposeAllTextures();

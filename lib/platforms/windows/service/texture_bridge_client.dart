@@ -17,7 +17,10 @@ class TextureBridgeClient {
 
   static final TextureBridgeClient instance = TextureBridgeClient._();
 
-  static const MethodChannel _channel = MethodChannel('dxgi_texture_bridge');
+  /// 纹理桥接通道：
+  /// - 只承载纹理生命周期方法（create/bind/dispose）。
+  static const MethodChannel _textureBridgeChannel =
+      MethodChannel('texture_bridge');
 
   /// 创建纹理并返回 Flutter `textureId`。
   ///
@@ -40,7 +43,7 @@ class TextureBridgeClient {
       if (h <= 0) {
         throw ArgumentError('createTexture handle invalid for dxgi');
       }
-      final id = await _channel.invokeMethod<int>('createTexture', {
+      final id = await _textureBridgeChannel.invokeMethod<int>('createTexture', {
         'handle': h,
         'width': width,
         'height': height,
@@ -55,7 +58,7 @@ class TextureBridgeClient {
       return id;
     }
 
-    final id = await _channel.invokeMethod<int>('createCpuPixelTexture', {
+    final id = await _textureBridgeChannel.invokeMethod<int>('createCpuPixelTexture', {
       'width': width,
       'height': height,
       'generation': generation,
@@ -84,7 +87,7 @@ class TextureBridgeClient {
     final method = backend == TextureBridgeBackend.dxgi
         ? 'bindDxgiTexture'
         : 'bindCpuPixelTexture';
-    await _channel.invokeMethod<bool>(method, {'textureId': textureId});
+    await _textureBridgeChannel.invokeMethod<bool>(method, {'textureId': textureId});
     Log.i('[TextureBridge] bind ${backend.name} id=$textureId');
   }
 
@@ -100,7 +103,7 @@ class TextureBridgeClient {
     final method = backend == TextureBridgeBackend.dxgi
         ? 'disposeTexture'
         : 'disposeCpuPixelTexture';
-    await _channel.invokeMethod<bool>(method, {'textureId': textureId});
+    await _textureBridgeChannel.invokeMethod<bool>(method, {'textureId': textureId});
     Log.i('[TextureBridge] dispose ${backend.name} id=$textureId');
   }
 }

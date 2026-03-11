@@ -3,9 +3,9 @@
 //
 // Flutter 主窗口实现：
 //   1. 创建并管理 FlutterViewController；
-//   2. 注册 MethodChannel "dxgi_texture_bridge"，供 Dart 层创建/绑定/释放
-//      纹理，并接收 Rust 回调事件（用于 scrcpy 视频帧渲染）；
-//   3. 注册 MethodChannel "window_title"，供 Dart 层设置窗口标题。
+//   2. 注册纹理桥接通道 "texture_bridge"；
+//   3. 注册会话事件桥接通道 "session_event_bridge"；
+//   4. 注册 MethodChannel "window_title"，供 Dart 层设置窗口标题。
 //
 // 【花屏修复说明】
 //   旧代码中 ObtainGpuDescriptor 没有 release_callback，Flutter 释放描述符时
@@ -81,15 +81,14 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
 
   // 通过插件注册器拿到 C API 纹理注册器（避免 C++ 封装链接问题）
-  const auto registrar_ref =
-      flutter_controller_->engine()->GetRegistrarForPlugin(
-          "dxgi_texture_bridge_runner");
+  const auto registrar_ref = flutter_controller_->engine()->GetRegistrarForPlugin("texture_bridge_runner");
   texture_registrar_ =
       FlutterDesktopRegistrarGetTextureRegistrar(registrar_ref);
   if (texture_registrar_ == nullptr) return false;
 
   RegisterWindowTitleChannel();
-  RegisterDxgiTextureBridge();
+  RegisterTextureBridge();
+  RegisterSessionEventBridge();
 
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
   flutter_controller_->engine()->SetNextFrameCallback(
@@ -100,7 +99,8 @@ bool FlutterWindow::OnCreate() {
 
 void FlutterWindow::OnDestroy() {
   DisposeAllTextures();
-  dxgi_texture_bridge_channel_.reset();
+  texture_bridge_channel_.reset();
+  session_event_bridge_channel_.reset();
   window_title_channel_.reset();
   if (flutter_controller_) flutter_controller_ = nullptr;
   texture_registrar_ = nullptr;
@@ -123,13 +123,13 @@ LRESULT FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     case kRustSessionEventMessage: {
       std::unique_ptr<SessionEventPayload> payload(
           reinterpret_cast<SessionEventPayload*>(wparam));
-      if (payload && dxgi_texture_bridge_channel_) {
+      if (payload && session_event_bridge_channel_) {
         flutter::EncodableMap args;
         args[flutter::EncodableValue("sessionId")] =
             flutter::EncodableValue(payload->session_id);
         args[flutter::EncodableValue("eventJson")] =
             flutter::EncodableValue(payload->event_json);
-        dxgi_texture_bridge_channel_->InvokeMethod(
+        session_event_bridge_channel_->InvokeMethod(
             "onSessionEvent",
             std::make_unique<flutter::EncodableValue>(std::move(args)));
       }

@@ -57,6 +57,14 @@ void RustSessionEventBridge(void* user_data,
 }  // namespace
 
 bool FlutterWindow::EnsureRustV2CallbackRegistered(std::string* error) {
+  // 功能：确保 Rust V2 帧回调注册完成（CPU 像素帧路径）。
+  //
+  // 参数说明：
+  // - error：输出参数。注册失败时写入错误文案，供 Dart/日志定位问题。
+  //
+  // 设计说明：
+  // - 该函数是幂等的；重复调用不会重复注册；
+  // - 只有在 bindCpuPixelTexture 成功前调用才有意义。
   if (rust_v2_callback_registered_.load(std::memory_order_acquire)) {
     return true;
   }
@@ -76,6 +84,14 @@ bool FlutterWindow::EnsureRustV2CallbackRegistered(std::string* error) {
 }
 
 bool FlutterWindow::EnsureRustV1CallbackRegistered(std::string* error) {
+  // 功能：确保 Rust V1 帧回调注册完成（DXGI 共享句柄路径）。
+  //
+  // 参数说明：
+  // - error：输出参数。注册失败时写入错误文案，供上层诊断。
+  //
+  // 设计说明：
+  // - 该函数是幂等的；重复调用不会重复注册；
+  // - 只有在 bindDxgiTexture 成功前调用才有意义。
   if (rust_v1_callback_registered_.load(std::memory_order_acquire)) {
     return true;
   }
@@ -95,6 +111,14 @@ bool FlutterWindow::EnsureRustV1CallbackRegistered(std::string* error) {
 }
 
 bool FlutterWindow::EnsureRustSessionEventCallbackRegistered(std::string* error) {
+  // 功能：确保 Rust SessionEvent 回调注册完成（事件 JSON 路径）。
+  //
+  // 参数说明：
+  // - error：输出参数。注册失败时写入错误文案。
+  //
+  // 设计说明：
+  // - 会话事件回调只需要注册一次，重复调用直接返回成功；
+  // - 由 bindSessionEvents 间接触发，作为事件桥初始化前置步骤。
   if (rust_session_event_callback_registered_.load(std::memory_order_acquire)) {
     return true;
   }
@@ -114,6 +138,14 @@ bool FlutterWindow::EnsureRustSessionEventCallbackRegistered(std::string* error)
 }
 
 bool FlutterWindow::BindSessionEvents(std::string* error) {
+  // 功能：对外提供“会话事件桥绑定”动作。
+  //
+  // 参数说明：
+  // - error：输出参数。绑定失败时写入错误文案。
+  //
+  // 行为说明：
+  // - 该函数不接收业务参数，只负责完成回调链路初始化；
+  // - 成功后 Rust 事件将通过窗口消息转发到 session_event_bridge。
   if (!EnsureRustSessionEventCallbackRegistered(error)) {
     return false;
   }
@@ -123,6 +155,12 @@ bool FlutterWindow::BindSessionEvents(std::string* error) {
 
 bool FlutterWindow::BindCpuPixelTexture(const flutter::EncodableMap& args,
                                         std::string* error) {
+  // 绑定 CPU PixelBuffer 纹理到 Rust V2 回调链路。
+  //
+  // 行为：
+  // 1) 校验 textureId 存在；
+  // 2) 确保已注册 V2 回调；
+  // 3) 记录当前激活纹理 ID，后续 Rust 帧回调只刷新该纹理。
   int64_t texture_id = 0;
   if (!ReadInt64(args, "textureId", &texture_id) || texture_id <= 0) {
     *error = "textureId 无效";
@@ -148,6 +186,12 @@ bool FlutterWindow::BindCpuPixelTexture(const flutter::EncodableMap& args,
 
 bool FlutterWindow::BindDxgiTexture(const flutter::EncodableMap& args,
                                     std::string* error) {
+  // 绑定 DXGI 纹理到 Rust V1 回调链路。
+  //
+  // 行为：
+  // 1) 校验 textureId 存在；
+  // 2) 确保已注册 V1 回调；
+  // 3) 记录当前激活纹理 ID，后续 Rust 句柄帧只刷新该纹理。
   int64_t texture_id = 0;
   if (!ReadInt64(args, "textureId", &texture_id) || texture_id <= 0) {
     *error = "textureId 无效";
@@ -172,7 +216,8 @@ bool FlutterWindow::BindDxgiTexture(const flutter::EncodableMap& args,
 
 void FlutterWindow::OnRustSessionEvent(const std::string& session_id,
                                        const std::string& event_json) {
-  if (dxgi_texture_bridge_channel_ == nullptr) {
+  // 此处不解析业务 JSON，只负责跨线程转发到窗口消息队列。
+  if (session_event_bridge_channel_ == nullptr) {
     return;
   }
   const HWND hwnd = GetHandle();
@@ -182,6 +227,7 @@ void FlutterWindow::OnRustSessionEvent(const std::string& session_id,
   auto payload = std::make_unique<SessionEventPayload>();
   payload->session_id = session_id;
   payload->event_json = event_json;
+  // 通过窗口消息切换到 UI 线程再调用 MethodChannel，避免跨线程直接触达 Dart。
   if (!PostMessageW(hwnd, kRustSessionEventMessage,
                     reinterpret_cast<WPARAM>(payload.get()), 0)) {
     return;
@@ -194,6 +240,11 @@ void FlutterWindow::OnRustV1Frame(int64_t handle,
                                   uint32_t height,
                                   uint64_t generation,
                                   int64_t /*pts*/) {
+  // V1 路径：Rust 回调传入共享句柄元信息，不拷贝像素。
+  //
+  // 线程说明：
+  // - 此函数运行在 Rust 回调线程；
+  // - 通过 state_mutex 保护 descriptor 相关字段并发访问。
   if (texture_registrar_ == nullptr) {
     return;
   }
@@ -248,6 +299,11 @@ void FlutterWindow::OnRustV2Frame(uint64_t frame_id,
                                   uint32_t pixel_format,
                                   uint64_t generation,
                                   int64_t /*pts*/) {
+  // V2 路径：Rust 回调直接传入 CPU 像素数据。
+  //
+  // 关键策略：
+  // - 使用快照环（render_snapshots）避免 Flutter 读取时被生产线程覆写；
+  // - 当所有快照都在使用中时，当前帧直接丢弃以换取稳定性和低延迟。
   if (texture_registrar_ == nullptr) {
     return;
   }
