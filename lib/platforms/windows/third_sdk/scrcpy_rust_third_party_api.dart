@@ -5,7 +5,8 @@ import 'dart:io';
 import 'package:flutter/services.dart'
     show Clipboard, ClipboardData, MethodCall, MethodChannel;
 import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
-import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_api/flutter_api.dart' as flutter_api;
+import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_api/flutter_api.dart'
+    as flutter_api;
 
 import 'package:sw_game_helper/utils/logger_service.dart';
 
@@ -32,11 +33,13 @@ class ScrcpyRustThirdPartyApi {
   /// 会话事件桥接通道：
   /// - Dart -> Runner：bindSessionEvents；
   /// - Runner -> Dart：onSessionEvent。
-  static const MethodChannel _sessionEventBridgeChannel =
-      MethodChannel('session_event_bridge');
+  static const MethodChannel _sessionEventBridgeChannel = MethodChannel(
+    'session_event_bridge',
+  );
 
   /// 会话事件总线（Rust 回调 -> Runner -> MethodChannel -> Dart）。
-  final StreamController<_SessionEventEnvelope> _sessionEventController = StreamController<_SessionEventEnvelope>.broadcast();
+  final StreamController<_SessionEventEnvelope> _sessionEventController =
+      StreamController<_SessionEventEnvelope>.broadcast();
 
   bool _sessionEventBridgeBound = false;
 
@@ -44,9 +47,7 @@ class ScrcpyRustThirdPartyApi {
   ///
   /// 使用方式：
   /// `await ScrcpyRustThirdPartyApi.instance.initLogger(maxLevel: bridge.LogLevel.info);`
-  Future<void> initLogger({
-    LogLevel maxLevel = LogLevel.info,
-  }) async {
+  Future<void> initLogger({LogLevel maxLevel = LogLevel.info}) async {
     await flutter_api.setupLogger(maxLevel: maxLevel);
   }
 
@@ -87,15 +88,19 @@ class ScrcpyRustThirdPartyApi {
     required String deviceId,
     required RenderPipelineMode renderPipelineMode,
     required DecoderMode decoderMode,
+    required int bitRate,
+    required int maxSize,
+    required int maxFps,
     bool turnScreenOff = false,
   }) async {
     final base = SessionConfig(
       adbPath: ThirdPartyPaths.adb,
       serverPath: ThirdPartyPaths.scrcpyServer,
       deviceId: deviceId,
-      maxSize: 0,
-      bitRate: 16000000,
-      maxFps: 0,
+      // 透传设置页参数：分辨率上限、码率、帧率。
+      maxSize: maxSize,
+      bitRate: bitRate,
+      maxFps: maxFps,
       videoPort: 27183,
       controlPort: 27184,
       videoEncoder: null,
@@ -105,7 +110,7 @@ class ScrcpyRustThirdPartyApi {
       scrcpyVerbosity: 'info',
       // 默认先走 1 秒关键帧周期，兼顾恢复速度。
       // 如果某些机型不兼容，可在后续策略中回退到 0。
-      intraRefreshPeriod: 1
+      intraRefreshPeriod: 1,
     );
 
     final config = SessionConfigV2(
@@ -125,36 +130,30 @@ class ScrcpyRustThirdPartyApi {
     Log.i('disconnect start: session=$sessionId');
     try {
       await flutter_api.stopSession(sessionId: sessionId);
-      Log.i('disconnect stop done: session=$sessionId cost=${sw.elapsedMilliseconds}ms');
+      Log.i(
+        'disconnect stop done: session=$sessionId cost=${sw.elapsedMilliseconds}ms',
+      );
     } catch (_) {
       Log.w('disconnect stop failed (ignored): session=$sessionId');
     }
     await flutter_api.disposeSession(sessionId: sessionId);
-    Log.i('disconnect dispose done: session=$sessionId cost=${sw.elapsedMilliseconds}ms');
+    Log.i(
+      'disconnect dispose done: session=$sessionId cost=${sw.elapsedMilliseconds}ms',
+    );
   }
 
   /// 发送触控事件到 Rust 当前会话。
-  Future<void> sendTouch(
-    String sessionId,
-    TouchEvent event,
-  ) async {
+  Future<void> sendTouch(String sessionId, TouchEvent event) async {
     await flutter_api.sendTouch(sessionId: sessionId, event: event);
   }
 
-
-  Future<void> sendKey(
-    String sessionId,
-    KeyEvent event,
-  ) async {
+  Future<void> sendKey(String sessionId, KeyEvent event) async {
     await flutter_api.sendKey(sessionId: sessionId, event: event);
   }
 
   /// 发送文本输入到当前会话。
   /// 该接口用于中文输入法和符号输入，优先于 keycode 模式。
-  Future<void> sendText(
-    String sessionId,
-    String text,
-  ) async {
+  Future<void> sendText(String sessionId, String text) async {
     if (text.isEmpty) {
       return;
     }
@@ -177,15 +176,10 @@ class ScrcpyRustThirdPartyApi {
     );
   }
 
-
-  Future<void> sendScroll(
-    String sessionId,
-    ScrollEvent event,
-  ) async {
+  Future<void> sendScroll(String sessionId, ScrollEvent event) async {
     await flutter_api.sendScroll(sessionId: sessionId, event: event);
   }
 
- 
   Stream<SessionEvent> streamSessionEvents(String sessionId) {
     _ensureSessionEventBridgeBound();
     return _sessionEventController.stream
@@ -225,14 +219,11 @@ class ScrcpyRustThirdPartyApi {
     unawaited(
       _sessionEventBridgeChannel
           .invokeMethod<bool>('bindSessionEvents')
-          .catchError((
-        Object e,
-        StackTrace st,
-      ) {
-        Log.w('绑定 SessionEvent 回调失败: $e');
-        Log.e('绑定 SessionEvent 回调异常堆栈', e, st);
-        return false;
-      }),
+          .catchError((Object e, StackTrace st) {
+            Log.w('绑定 SessionEvent 回调失败: $e');
+            Log.e('绑定 SessionEvent 回调异常堆栈', e, st);
+            return false;
+          }),
     );
   }
 
@@ -374,5 +365,3 @@ class _SessionEventEnvelope {
 
   const _SessionEventEnvelope({required this.sessionId, required this.event});
 }
-
-

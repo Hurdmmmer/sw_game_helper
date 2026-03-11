@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:sw_game_helper/enums/connection_mode.dart';
 import 'package:sw_game_helper/enums/connection_status.dart';
@@ -53,6 +53,15 @@ class DeviceServiceImpl extends DeviceService {
   /// 最近一次“连接后是否熄屏”配置（自动重连时复用）。
   bool _lastTurnScreenOff = false;
 
+  /// 最近一次码率配置（单位 bps，自动重连时复用）。
+  int _lastBitRate = 16000000;
+
+  /// 最近一次 max-size 配置（自动重连时复用）。
+  int _lastMaxSize = 0;
+
+  /// 最近一次最大帧率配置（自动重连时复用）。
+  int _lastMaxFps = 0;
+
   /// 解绑所有会话流订阅。
   ///
   /// 注意：纹理轮询流已被移除，这里仅保留事件流解绑。
@@ -60,7 +69,6 @@ class DeviceServiceImpl extends DeviceService {
     await _eventSub?.cancel();
     _eventSub = null;
   }
-
 
   /// 防止旧会话异步回调（尤其是重连后）污染当前 UI 状态。
   bool _isSessionActive(String sessionId, int epoch) {
@@ -170,6 +178,9 @@ class DeviceServiceImpl extends DeviceService {
     required RenderPipelineMode renderPipelineMode,
     required DeviceDecoderMode decoderMode,
     required bool turnScreenOff,
+    required int bitRate,
+    required int maxSize,
+    required int maxFps,
     required bool replaceExisting,
   }) async {
     final existingSessionId = _connectedSessions[device.deviceId];
@@ -181,10 +192,15 @@ class DeviceServiceImpl extends DeviceService {
       _lastRenderPipelineMode = renderPipelineMode;
       _lastDecoderMode = decoderMode;
       _lastTurnScreenOff = turnScreenOff;
+      _lastBitRate = bitRate;
+      _lastMaxSize = maxSize;
+      _lastMaxFps = maxFps;
       return true;
     }
 
-    if (replaceExisting && existingSessionId != null && existingSessionId.isNotEmpty) {
+    if (replaceExisting &&
+        existingSessionId != null &&
+        existingSessionId.isNotEmpty) {
       try {
         await ScrcpyRustThirdPartyApi.instance.disconnect(existingSessionId);
       } catch (e, st) {
@@ -201,6 +217,9 @@ class DeviceServiceImpl extends DeviceService {
       deviceId: device.deviceId,
       renderPipelineMode: _toBridgeRenderPipelineMode(renderPipelineMode),
       decoderMode: _toBridgeDecoderMode(decoderMode),
+      bitRate: bitRate,
+      maxSize: maxSize,
+      maxFps: maxFps,
       // 关键透传：把 UI 的熄屏开关传到 Rust，会话建链后再执行设备熄屏请求。
       turnScreenOff: turnScreenOff,
     );
@@ -214,6 +233,9 @@ class DeviceServiceImpl extends DeviceService {
     _lastRenderPipelineMode = renderPipelineMode;
     _lastDecoderMode = decoderMode;
     _lastTurnScreenOff = turnScreenOff;
+    _lastBitRate = bitRate;
+    _lastMaxSize = maxSize;
+    _lastMaxFps = maxFps;
     return true;
   }
 
@@ -275,6 +297,9 @@ class DeviceServiceImpl extends DeviceService {
             renderPipelineMode: _lastRenderPipelineMode,
             decoderMode: _lastDecoderMode,
             turnScreenOff: _lastTurnScreenOff,
+            bitRate: _lastBitRate,
+            maxSize: _lastMaxSize,
+            maxFps: _lastMaxFps,
             replaceExisting: true,
           );
           refreshDeviceStatus(ConnectionStatus.connected);
@@ -317,19 +342,25 @@ class DeviceServiceImpl extends DeviceService {
     if (model.startsWith('SM-') || model.startsWith('SAMSUNG')) {
       return 'Samsung';
     }
-    if (model.startsWith('M') || model.contains('XIAOMI') || model.contains('REDMI')) {
+    if (model.startsWith('M') ||
+        model.contains('XIAOMI') ||
+        model.contains('REDMI')) {
       return 'Xiaomi';
     }
     if (model.contains('VIVO')) {
       return 'vivo';
     }
-    if (model.contains('OPPO') || model.contains('PCH') || model.contains('CPH')) {
+    if (model.contains('OPPO') ||
+        model.contains('PCH') ||
+        model.contains('CPH')) {
       return 'OPPO';
     }
     if (model.contains('PIXEL') || model.contains('GOOGLE')) {
       return 'Google';
     }
-    if (model.contains('ONEPLUS') || model.startsWith('NE') || model.startsWith('LE')) {
+    if (model.contains('ONEPLUS') ||
+        model.startsWith('NE') ||
+        model.startsWith('LE')) {
       return 'OnePlus';
     }
     if (model.contains('HUAWEI') || model.contains('HONOR')) {
@@ -349,15 +380,18 @@ class DeviceServiceImpl extends DeviceService {
     return ip.isEmpty ? ConnectionMode.usb : ConnectionMode.wifi;
   }
 
-  static RenderPipelineMode _toBridgeRenderPipelineMode(RenderPipelineMode mode,) {
+  static RenderPipelineMode _toBridgeRenderPipelineMode(
+    RenderPipelineMode mode,
+  ) {
     return switch (mode) {
       RenderPipelineMode.original => RenderPipelineMode.original,
-      RenderPipelineMode.cpuPixelBufferV2 => RenderPipelineMode.cpuPixelBufferV2,
+      RenderPipelineMode.cpuPixelBufferV2 =>
+        RenderPipelineMode.cpuPixelBufferV2,
     };
   }
 
   /// 将 [DeviceDecoderMode] 转换为 Rust 侧的 [DecoderMode]。
-  /// 注意： 
+  /// 注意：
   /// - Rust 侧解码器模式与 Flutter 侧枚举值不同，需转换。
   static DecoderMode _toBridgeDecoderMode(DeviceDecoderMode mode) {
     return switch (mode) {
@@ -401,10 +435,15 @@ class DeviceServiceImpl extends DeviceService {
     RenderPipelineMode renderPipelineMode = RenderPipelineMode.cpuPixelBufferV2,
     DeviceDecoderMode decoderMode = DeviceDecoderMode.forceSoftware,
     bool turnScreenOff = false,
+    int bitRate = 16000000,
+    int maxSize = 0,
+    int maxFps = 0,
   }) async {
     try {
       Log.i(
-        'Connect request: device=${device.deviceId}, render=$renderPipelineMode, decoder=$decoderMode, turnScreenOff=$turnScreenOff',
+        'Connect request: device=${device.deviceId}, render=$renderPipelineMode, '
+        'decoder=$decoderMode, turnScreenOff=$turnScreenOff, '
+        'bitRate=$bitRate, maxSize=$maxSize, maxFps=$maxFps',
       );
       refreshDeviceStatus(ConnectionStatus.connecting);
       final ok = await _connectSession(
@@ -412,6 +451,9 @@ class DeviceServiceImpl extends DeviceService {
         renderPipelineMode: renderPipelineMode,
         decoderMode: decoderMode,
         turnScreenOff: turnScreenOff,
+        bitRate: bitRate,
+        maxSize: maxSize,
+        maxFps: maxFps,
         replaceExisting: false,
       );
       if (ok) {
@@ -601,8 +643,7 @@ class DeviceServiceImpl extends DeviceService {
   /// 注意：
   /// - 该流与“帧刷新”无关，仅承载状态与分辨率变更；
   /// - 帧刷新由 Rust->Runner 回调直接触发。
-  Stream<SessionEvent> streamSessionEvents() =>
-      _sessionEventController.stream;
+  Stream<SessionEvent> streamSessionEvents() => _sessionEventController.stream;
 
   @override
   Future<SessionStats?> getCurrentSessionStats() async {
@@ -621,4 +662,3 @@ class DeviceServiceImpl extends DeviceService {
     super.dispose();
   }
 }
-

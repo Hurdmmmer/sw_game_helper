@@ -80,6 +80,10 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
         renderPipelineMode: appSettings.renderPipelineMode,
         decoderMode: appSettings.decoderMode,
         turnScreenOff: appSettings.turnScreenOffOnConnect,
+        // 设置页参数透传到 scrcpy 连接配置。
+        bitRate: appSettings.bitrateKbps.toBpsFromKbps(),
+        maxSize: appSettings.maxSizeOption.toMaxSizeValue(),
+        maxFps: appSettings.frameRate,
       );
       if (!success) {
         setState(() => _isConnected = false);

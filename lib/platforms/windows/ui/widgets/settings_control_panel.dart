@@ -33,12 +33,26 @@ class SettingsControlPanel extends ConsumerWidget {
   /// 将 scrcpy `--max-size` 档位转换为可读文本。
   String _maxSizeLabel(ScrcpyMaxSizeOption option) {
     return switch (option) {
-      ScrcpyMaxSizeOption.max1024 => 'max-size 1024',
-      ScrcpyMaxSizeOption.max1280 => 'max-size 1280',
-      ScrcpyMaxSizeOption.max1600 => 'max-size 1600',
+      ScrcpyMaxSizeOption.unlimited => '无限制（max-size 0）',
       ScrcpyMaxSizeOption.max1920 => 'max-size 1920',
-      ScrcpyMaxSizeOption.max2560 => 'max-size 2560',
     };
+  }
+
+  /// 获取最接近目标值的离散档位下标。
+  int _nearestStepIndex(List<int> steps, int target) {
+    if (steps.isEmpty) {
+      return 0;
+    }
+    var nearestIndex = 0;
+    var nearestDistance = (steps.first - target).abs();
+    for (var i = 1; i < steps.length; i++) {
+      final distance = (steps[i] - target).abs();
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = i;
+      }
+    }
+    return nearestIndex;
   }
 
   /// 构建设置面板主体。
@@ -46,6 +60,21 @@ class SettingsControlPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    // 码率采用离散整数档位，避免滑动产生不稳定中间值。
+    const bitrateSteps = <int>[
+      2000,
+      4000,
+      6000,
+      8000,
+      10000,
+      12000,
+      14000,
+      16000,
+      18000,
+      20000,
+    ];
+    // FPS 使用固定整数档位：0/30/60/120。
+    const frameRateSteps = <int>[0, 30, 60, 120];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -129,24 +158,42 @@ class SettingsControlPanel extends ConsumerWidget {
                         title: '码率',
                         unit: 'Kbps',
                         valueText: '${settings.bitrateKbps}',
-                        min: 2000,
-                        max: 20000,
-                        divisions: 18,
-                        value: settings.bitrateKbps.toDouble(),
-                        onChanged: (value) =>
-                            notifier.setBitrateKbps(value.round()),
+                        min: 0,
+                        max: (bitrateSteps.length - 1).toDouble(),
+                        divisions: bitrateSteps.length - 1,
+                        value: _nearestStepIndex(
+                          bitrateSteps,
+                          settings.bitrateKbps,
+                        ).toDouble(),
+                        onChanged: (value) {
+                          final index = value.round().clamp(
+                            0,
+                            bitrateSteps.length - 1,
+                          );
+                          notifier.setBitrateKbps(bitrateSteps[index]);
+                        },
                       ),
+                      SizedBox(height: AppSpacing.sm),
                       _InlineMetricSlider(
                         title: '帧率',
                         unit: 'FPS',
                         valueText: '${settings.frameRate}',
-                        min: 15,
-                        max: 120,
-                        divisions: 9,
-                        value: settings.frameRate.toDouble(),
-                        onChanged: (value) =>
-                            notifier.setFrameRate(value.round()),
+                        min: 0,
+                        max: (frameRateSteps.length - 1).toDouble(),
+                        divisions: frameRateSteps.length - 1,
+                        value: _nearestStepIndex(
+                          frameRateSteps,
+                          settings.frameRate,
+                        ).toDouble(),
+                        onChanged: (value) {
+                          final index = value.round().clamp(
+                            0,
+                            frameRateSteps.length - 1,
+                          );
+                          notifier.setFrameRate(frameRateSteps[index]);
+                        },
                       ),
+                      SizedBox(height: AppSpacing.sm),
                       _FieldBlock(
                         title: '最大尺寸（scrcpy --max-size）',
                         child: StyledDropdown<ScrcpyMaxSizeOption>(
@@ -223,11 +270,11 @@ class SettingsControlPanel extends ConsumerWidget {
                 style: PanelPrimitives.primaryButtonStyle(context),
                 onPressed: () async {
                   await notifier.applySettings();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text('设置已应用')));
-                  }
+                  // if (context.mounted) {
+                  //   ScaffoldMessenger.of(
+                  //     context,
+                  //   ).showSnackBar(SnackBar(content: Text('设置已应用')));
+                  // }
                 },
                 icon: Icon(LucideIcons.save, size: 15),
                 label: Text('应用并保存'),
@@ -352,8 +399,11 @@ class _InlineMetricSlider extends StatelessWidget {
             ),
           ),
         ),
+        SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Slider(
+            // 去掉 Slider 默认左右内边距，减少左侧大留白。
+            padding: EdgeInsets.zero,
             value: value,
             min: min,
             max: max,

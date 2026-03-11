@@ -40,11 +40,17 @@ abstract class DeviceService {
   /// - [renderPipelineMode]：渲染管线模式；
   /// - [decoderMode]：解码器偏好；
   /// - [turnScreenOff]：连接后是否请求设备熄屏（投屏继续）。
+  /// - [bitRate]：视频码率（单位 bps）；
+  /// - [maxSize]：视频最大边界（scrcpy `--max-size`）；
+  /// - [maxFps]：视频最大帧率（单位 FPS）。
   Future<bool> connectDevice(
     AppDeviceInfo device, {
     RenderPipelineMode renderPipelineMode = RenderPipelineMode.cpuPixelBufferV2,
     DeviceDecoderMode decoderMode = DeviceDecoderMode.preferHardware,
     bool turnScreenOff = false,
+    int bitRate = 16000000,
+    int maxSize = 0,
+    int maxFps = 0,
   });
 
   /// 断开当前设备会话并清理资源。
@@ -61,10 +67,7 @@ abstract class DeviceService {
   /// 参数说明：
   /// - [keycode]：Android keycode；
   /// - [isDown]：true 为按下，false 为抬起。
-  Future<void> sendKeyInput({
-    required int keycode,
-    required bool isDown,
-  });
+  Future<void> sendKeyInput({required int keycode, required bool isDown});
 
   /// 发送文本输入到设备（适合中文、符号、输入法提交文本）。
   Future<void> sendTextInput(String text);
