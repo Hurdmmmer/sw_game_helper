@@ -25,6 +25,7 @@ class DeviceServiceImpl extends DeviceService {
 
   /// 会话事件订阅（统一由该订阅驱动上层状态）。
   StreamSubscription<SessionEvent>? _eventSub;
+  String? _boundSessionId;
 
   /// 手动断开标志：避免断开期间触发自动重连。
   bool _manualDisconnecting = false;
@@ -66,8 +67,28 @@ class DeviceServiceImpl extends DeviceService {
   ///
   /// 注意：纹理轮询流已被移除，这里仅保留事件流解绑。
   Future<void> _unbindSessionStreams() async {
-    await _eventSub?.cancel();
+    final sessionId = _boundSessionId;
+    _boundSessionId = null;
+    final sub = _eventSub;
     _eventSub = null;
+
+    if (sessionId != null && sessionId.isNotEmpty) {
+      unawaited(
+        ScrcpyRustThirdPartyApi.instance
+            .unbindClipboardSync(sessionId)
+            .catchError((Object e, StackTrace st) {
+              Log.e('解绑剪贴板回调失败(session=$sessionId): $e', e, st);
+            }),
+      );
+    }
+
+    if (sub != null) {
+      unawaited(
+        sub.cancel().catchError((Object e, StackTrace st) {
+          Log.e('解绑会话事件流失败: $e', e, st);
+        }),
+      );
+    }
   }
 
   /// 防止旧会话异步回调（尤其是重连后）污染当前 UI 状态。
@@ -89,6 +110,8 @@ class DeviceServiceImpl extends DeviceService {
     await _unbindSessionStreams();
     // 统一帧驱动架构：V1/V2 都由 Rust->Runner 回调触发渲染，
     // DeviceService 不再订阅 Dart 侧纹理轮询流。
+    _boundSessionId = sessionId;
+    await ScrcpyRustThirdPartyApi.instance.bindClipboardSync(sessionId);
 
     _eventSub = ScrcpyRustThirdPartyApi.instance
         .streamSessionEvents(sessionId)
@@ -124,7 +147,7 @@ class DeviceServiceImpl extends DeviceService {
     required SessionEvent event,
   }) {
     _sessionEventController.add(event);
-    event.when(
+    event.maybeWhen(
       starting: () => refreshDeviceStatus(ConnectionStatus.connecting),
       running: () => refreshDeviceStatus(ConnectionStatus.connected),
       reconnecting: () {
@@ -153,6 +176,7 @@ class DeviceServiceImpl extends DeviceService {
           'Resolution changed: ${width}x$height handle=${newHandle.toInt()} gen=$generation',
         );
       },
+      orElse: () {},
     );
   }
 
@@ -467,32 +491,29 @@ class DeviceServiceImpl extends DeviceService {
   }
 
   @override
-  Future<void> disconnectDevice(AppDeviceInfo device) async {
+  Future<void> disconnectDevice(AppDeviceInfo? device) async {
     _manualDisconnecting = true;
     final sw = Stopwatch()..start();
-    final connected = connectedDevice;
-    final fallbackDeviceId = connected?.deviceId;
-    String? sessionId = _connectedSessions.remove(device.deviceId);
+
+    String? sessionId = _connectedSessions.remove(device?.deviceId);
     sessionId ??= currentSessionId;
     if (sessionId == null || sessionId.isEmpty) {
       Log.w(
-        'Disconnect skipped: no active session for device=${device.deviceId}, '
-        'connected=${fallbackDeviceId ?? "none"}',
+        'Disconnect skipped: no active session for device=${device?.deviceId}, '
+        'connected=${device?.deviceId ?? "none"}',
       );
       await _unbindSessionStreams();
       Log.i(
         'Disconnect unbind done(no session): cost=${sw.elapsedMilliseconds}ms',
       );
-      clearCurrentDevice();
       refreshDeviceStatus(ConnectionStatus.disconnected);
       _manualDisconnecting = false;
       return;
     }
 
-    Log.i('Disconnect start: device=${device.deviceId}, session=$sessionId');
+    Log.i('Disconnect start: device=${device?.deviceId}, session=$sessionId');
     // 先切断 UI 连接态，确保 VideoView 立即显示“未连接设备”并清理纹理。
     refreshDeviceStatus(ConnectionStatus.disconnected);
-    clearCurrentDevice();
     await _unbindSessionStreams();
     Log.i(
       'Disconnect unbind done: session=$sessionId cost=${sw.elapsedMilliseconds}ms',
@@ -504,11 +525,10 @@ class DeviceServiceImpl extends DeviceService {
         'Disconnect dispose done: session=$sessionId cost=${sw.elapsedMilliseconds}ms',
       );
     } catch (e, st) {
-      Log.e('Disconnect device failed(${device.deviceId}): $e', e, st);
+      Log.e('Disconnect device failed(${device?.deviceId}): $e', e, st);
     } finally {
-      if (fallbackDeviceId != null) {
-        _connectedSessions.remove(fallbackDeviceId);
-      }
+      _connectedSessions.remove(device?.deviceId);
+
       _activeSessionEpoch = -1;
       refreshDeviceStatus(ConnectionStatus.disconnected);
       _manualDisconnecting = false;

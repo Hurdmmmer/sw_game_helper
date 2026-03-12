@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sw_game_helper/enums/connection_mode.dart';
 import 'package:sw_game_helper/platforms/windows/service/device_service.dart';
 import 'package:sw_game_helper/platforms/windows/service/device_service_impl.dart';
 import 'package:sw_game_helper/enums/connection_status.dart';
@@ -33,8 +32,9 @@ final allDevicesProvider = FutureProvider<List<AppDeviceInfo>>((ref) async {
   return result;
 });
 
+
 // 设备连接状态监听
-final deviceConnectionStatusProvider = StreamProvider<ConnectionStatus>((ref) {
+final currentDeviceConnectStatusProvider = StreamProvider<ConnectionStatus>((ref) {
   final deviceService = ref.watch(deviceServiceProvider);
-  return deviceService.connectionStatus;
+  return deviceService.currentConnectStatus;
 });

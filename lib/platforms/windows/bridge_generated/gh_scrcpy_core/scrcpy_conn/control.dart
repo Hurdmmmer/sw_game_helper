@@ -6,113 +6,130 @@
 import '../../frb_generated.dart';
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-
-            
-
-            
-
-            enum AndroidKeyEventAction {
-                    down,
-up,
-                    ;
-                    
-                }
+enum AndroidKeyEventAction { down, up }
 
 enum AndroidMotionEventAction {
-                    down,
-up,
-move,
-cancel,
-pointerDown,
-pointerUp,
-hoverMove,
-hoverEnter,
-hoverExit,
-                    ;
-                    
-                }
+  down,
+  up,
+  move,
+  cancel,
+  pointerDown,
+  pointerUp,
+  hoverMove,
+  hoverEnter,
+  hoverExit,
+}
 
-class KeyEvent  {
-                final AndroidKeyEventAction action;
-final int keycode;
-final int repeat;
-final int metastate;
+class KeyEvent {
+  final AndroidKeyEventAction action;
+  final int keycode;
+  final int repeat;
+  final int metastate;
 
-                const KeyEvent({required this.action ,required this.keycode ,required this.repeat ,required this.metastate ,});
+  const KeyEvent({
+    required this.action,
+    required this.keycode,
+    required this.repeat,
+    required this.metastate,
+  });
 
-                
-                
+  @override
+  int get hashCode =>
+      action.hashCode ^ keycode.hashCode ^ repeat.hashCode ^ metastate.hashCode;
 
-                
-        @override
-        int get hashCode => action.hashCode^keycode.hashCode^repeat.hashCode^metastate.hashCode;
-        
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is KeyEvent &&
+          runtimeType == other.runtimeType &&
+          action == other.action &&
+          keycode == other.keycode &&
+          repeat == other.repeat &&
+          metastate == other.metastate;
+}
 
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is KeyEvent &&
-                runtimeType == other.runtimeType
-                && action == other.action&& keycode == other.keycode&& repeat == other.repeat&& metastate == other.metastate;
-        
-            }
+class ScrollEvent {
+  final double x;
+  final double y;
+  final int width;
+  final int height;
+  final int hscroll;
+  final int vscroll;
 
-class ScrollEvent  {
-                final double x;
-final double y;
-final int width;
-final int height;
-final int hscroll;
-final int vscroll;
+  const ScrollEvent({
+    required this.x,
+    required this.y,
+    required this.width,
+    required this.height,
+    required this.hscroll,
+    required this.vscroll,
+  });
 
-                const ScrollEvent({required this.x ,required this.y ,required this.width ,required this.height ,required this.hscroll ,required this.vscroll ,});
+  @override
+  int get hashCode =>
+      x.hashCode ^
+      y.hashCode ^
+      width.hashCode ^
+      height.hashCode ^
+      hscroll.hashCode ^
+      vscroll.hashCode;
 
-                
-                
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ScrollEvent &&
+          runtimeType == other.runtimeType &&
+          x == other.x &&
+          y == other.y &&
+          width == other.width &&
+          height == other.height &&
+          hscroll == other.hscroll &&
+          vscroll == other.vscroll;
+}
 
-                
-        @override
-        int get hashCode => x.hashCode^y.hashCode^width.hashCode^height.hashCode^hscroll.hashCode^vscroll.hashCode;
-        
+class TouchEvent {
+  final AndroidMotionEventAction action;
+  final PlatformInt64 pointerId;
+  final double x;
+  final double y;
+  final double pressure;
+  final int width;
+  final int height;
+  final int buttons;
 
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is ScrollEvent &&
-                runtimeType == other.runtimeType
-                && x == other.x&& y == other.y&& width == other.width&& height == other.height&& hscroll == other.hscroll&& vscroll == other.vscroll;
-        
-            }
+  const TouchEvent({
+    required this.action,
+    required this.pointerId,
+    required this.x,
+    required this.y,
+    required this.pressure,
+    required this.width,
+    required this.height,
+    required this.buttons,
+  });
 
-class TouchEvent  {
-                final AndroidMotionEventAction action;
-final PlatformInt64 pointerId;
-final double x;
-final double y;
-final double pressure;
-final int width;
-final int height;
-final int buttons;
+  @override
+  int get hashCode =>
+      action.hashCode ^
+      pointerId.hashCode ^
+      x.hashCode ^
+      y.hashCode ^
+      pressure.hashCode ^
+      width.hashCode ^
+      height.hashCode ^
+      buttons.hashCode;
 
-                const TouchEvent({required this.action ,required this.pointerId ,required this.x ,required this.y ,required this.pressure ,required this.width ,required this.height ,required this.buttons ,});
-
-                
-                
-
-                
-        @override
-        int get hashCode => action.hashCode^pointerId.hashCode^x.hashCode^y.hashCode^pressure.hashCode^width.hashCode^height.hashCode^buttons.hashCode;
-        
-
-                
-        @override
-        bool operator ==(Object other) =>
-            identical(this, other) ||
-            other is TouchEvent &&
-                runtimeType == other.runtimeType
-                && action == other.action&& pointerId == other.pointerId&& x == other.x&& y == other.y&& pressure == other.pressure&& width == other.width&& height == other.height&& buttons == other.buttons;
-        
-            }
-            
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TouchEvent &&
+          runtimeType == other.runtimeType &&
+          action == other.action &&
+          pointerId == other.pointerId &&
+          x == other.x &&
+          y == other.y &&
+          pressure == other.pressure &&
+          width == other.width &&
+          height == other.height &&
+          buttons == other.buttons;
+}

@@ -135,7 +135,7 @@ class _HomePageState extends ConsumerState<HomePage>
                             ),
                           ),
                           Expanded(
-                            flex: 1,
+                            flex: 2,
                             child: Padding(
                               padding: EdgeInsets.fromLTRB(
                                 AppSpacing.sm,
@@ -311,7 +311,7 @@ class _LogConsolePanelState extends State<_LogConsolePanel> {
                       : ListView.builder(
                           controller: _logScrollController,
                           // 预留顶部空间，避免被悬浮按钮遮挡。
-                          padding: const EdgeInsets.only(top: 32),
+                          // padding: const EdgeInsets.only(top: 32),
                           itemCount: _entries.length,
                           itemBuilder: (context, index) {
                             final entry = _entries[index];
@@ -331,17 +331,17 @@ class _LogConsolePanelState extends State<_LogConsolePanel> {
                           },
                         ),
                 ),
-                Positioned(
-                  top: -10,
-                  right: -10,
-                  child: TextButton(
-                    onPressed: Log.clear,
-                    style: TextButton.styleFrom(
-                      overlayColor: Colors.transparent,
-                    ),
-                    child: const Text('Clear'),
-                  ),
-                ),
+                // Positioned(
+                //   top: -10,
+                //   right: -10,
+                //   child: TextButton(
+                //     onPressed: Log.clear,
+                //     style: TextButton.styleFrom(
+                //       overlayColor: Colors.transparent,
+                //     ),
+                //     child: const Text('Clear'),
+                //   ),
+                // ),
               ],
             ),
           ),

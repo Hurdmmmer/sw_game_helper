@@ -4,7 +4,6 @@
 // Flutter 主窗口实现：
 //   1. 创建并管理 FlutterViewController；
 //   2. 注册纹理桥接通道 "texture_bridge"；
-//   3. 注册会话事件桥接通道 "session_event_bridge"；
 //   4. 注册 MethodChannel "window_title"，供 Dart 层设置窗口标题。
 //
 // 【花屏修复说明】
@@ -88,7 +87,7 @@ bool FlutterWindow::OnCreate() {
 
   RegisterWindowTitleChannel();
   RegisterTextureBridge();
-  RegisterSessionEventBridge();
+  RegisterClipboardBridge();
 
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
   flutter_controller_->engine()->SetNextFrameCallback(
@@ -99,8 +98,8 @@ bool FlutterWindow::OnCreate() {
 
 void FlutterWindow::OnDestroy() {
   DisposeAllTextures();
+  clipboard_bridge_channel_.reset();
   texture_bridge_channel_.reset();
-  session_event_bridge_channel_.reset();
   window_title_channel_.reset();
   if (flutter_controller_) flutter_controller_ = nullptr;
   texture_registrar_ = nullptr;
@@ -120,36 +119,9 @@ LRESULT FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
       break;
-    case kRustSessionEventMessage: {
-      std::unique_ptr<SessionEventPayload> payload(
-          reinterpret_cast<SessionEventPayload*>(wparam));
-      if (payload && session_event_bridge_channel_) {
-        flutter::EncodableMap args;
-        args[flutter::EncodableValue("sessionId")] =
-            flutter::EncodableValue(payload->session_id);
-        args[flutter::EncodableValue("eventJson")] =
-            flutter::EncodableValue(payload->event_json);
-        session_event_bridge_channel_->InvokeMethod(
-            "onSessionEvent",
-            std::make_unique<flutter::EncodableValue>(std::move(args)));
-      }
+    case kClipboardEventMessage:
+      DispatchClipboardEventsToDart();
       return 0;
-    }
-    case kRustLogMessage: {
-      std::unique_ptr<RustLogPayload> payload(
-          reinterpret_cast<RustLogPayload*>(wparam));
-      if (payload && session_event_bridge_channel_) {
-        flutter::EncodableMap args;
-        args[flutter::EncodableValue("level")] =
-            flutter::EncodableValue(payload->level);
-        args[flutter::EncodableValue("message")] =
-            flutter::EncodableValue(payload->message);
-        session_event_bridge_channel_->InvokeMethod(
-            "onRustLog",
-            std::make_unique<flutter::EncodableValue>(std::move(args)));
-      }
-      return 0;
-    }
   }
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);
 }

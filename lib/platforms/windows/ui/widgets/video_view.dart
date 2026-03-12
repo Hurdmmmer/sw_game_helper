@@ -142,7 +142,7 @@ class _VideoViewState extends ConsumerState<VideoView>
   void _bindRuntimeGate() {
     final service = ref.read(deviceServiceProvider);
 
-    _statusSub = service.connectionStatus.listen((status) {
+    _statusSub = service.currentConnectStatus.listen((status) {
       if (_isDisposing) {
         return;
       }
@@ -593,11 +593,11 @@ class _VideoViewState extends ConsumerState<VideoView>
       final data = await Clipboard.getData(Clipboard.kTextPlain);
       final text = data?.text ?? '';
       if (text.trim().isEmpty) {
-        Log.i('快捷键处理：Windows 剪贴板为空，忽略 Ctrl+V');
+        Log.d('快捷键处理：Windows 剪贴板为空，忽略 Ctrl+V');
         return;
       }
       await service.sendClipboardToDevice(text: text, paste: true);
-      Log.i('快捷键处理：已同步并触发设备粘贴');
+      Log.d('快捷键处理：已同步并触发设备粘贴');
     } catch (e, st) {
       Log.e('快捷键处理失败：剪贴板粘贴链路异常: $e', e, st);
     }
@@ -612,7 +612,7 @@ class _VideoViewState extends ConsumerState<VideoView>
     try {
       await service.sendKeyInput(keycode: keycode, isDown: true);
       await service.sendKeyInput(keycode: keycode, isDown: false);
-      Log.i('快捷键处理：已注入 $tag');
+      Log.d('快捷键处理：已注入 $tag');
     } catch (e, st) {
       Log.e('快捷键处理失败：注入 $tag 异常: $e', e, st);
     }
@@ -633,7 +633,7 @@ class _VideoViewState extends ConsumerState<VideoView>
       await service.sendKeyInput(keycode: targetKeycode, isDown: true);
       await service.sendKeyInput(keycode: targetKeycode, isDown: false);
       await service.sendKeyInput(keycode: 113, isDown: false); // CTRL_LEFT up
-      Log.i('快捷键处理：已注入 $tag');
+      Log.d('快捷键处理：已注入 $tag');
     } catch (e, st) {
       Log.e('快捷键处理失败：注入 $tag 异常: $e', e, st);
     }
@@ -755,7 +755,7 @@ class _VideoViewState extends ConsumerState<VideoView>
   @override
   Widget build(BuildContext context) {
     // 连接状态统一入口。
-    final statusAsync = ref.watch(deviceConnectionStatusProvider);
+    final statusAsync = ref.watch(currentDeviceConnectStatusProvider);
 
     return statusAsync.when(
       loading: () => const Center(

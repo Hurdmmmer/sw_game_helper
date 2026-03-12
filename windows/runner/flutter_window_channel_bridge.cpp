@@ -61,18 +61,17 @@ void FlutterWindow::RegisterTextureBridge() {
       });
 }
 
-void FlutterWindow::RegisterSessionEventBridge() {
-  // 会话事件桥接通道：只承载事件绑定与事件回调分发。
-  session_event_bridge_channel_ =
+void FlutterWindow::RegisterClipboardBridge() {
+  clipboard_bridge_channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-          flutter_controller_->engine()->messenger(), "session_event_bridge",
+          flutter_controller_->engine()->messenger(), "clipboard_bridge",
           &flutter::StandardMethodCodec::GetInstance());
 
-  session_event_bridge_channel_->SetMethodCallHandler(
+  clipboard_bridge_channel_->SetMethodCallHandler(
       [this](const flutter::MethodCall<flutter::EncodableValue>& call,
              std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
                  result) {
-        HandleSessionEventBridgeCall(call, std::move(result));
+        HandleClipboardBridgeCall(call, std::move(result));
       });
 }
 
@@ -148,19 +147,27 @@ bool FlutterWindow::HandleTextureBridgeCall(
   return false;
 }
 
-bool FlutterWindow::HandleSessionEventBridgeCall(
+bool FlutterWindow::HandleClipboardBridgeCall(
     const flutter::MethodCall<flutter::EncodableValue>& call,
     std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  // 事件桥接统一入口：
-  // - 当前只支持 bindSessionEvents；
-  // - 该方法不要求传参数。
   const auto& method = call.method_name();
-  std::string error;
 
-  if (method == "bindSessionEvents") {
-    if (!BindSessionEvents(&error)) {
-      result->Error("BIND_SESSION_EVENTS_FAILED", error);
+  if (method == "bindClipboardCallback") {
+    std::string error;
+    if (!EnsureRustClipboardCallbackRegistered(&error)) {
+      result->Error("BIND_CLIPBOARD_FAILED", error);
       return true;
+    }
+    clipboard_callback_enabled_.store(true, std::memory_order_release);
+    result->Success(flutter::EncodableValue(true));
+    return true;
+  }
+
+  if (method == "unbindClipboardCallback") {
+    clipboard_callback_enabled_.store(false, std::memory_order_release);
+    {
+      std::lock_guard<std::mutex> lock(clipboard_event_mutex_);
+      pending_clipboard_events_.clear();
     }
     result->Success(flutter::EncodableValue(true));
     return true;

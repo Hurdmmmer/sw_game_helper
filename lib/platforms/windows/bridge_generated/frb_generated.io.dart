@@ -26,6 +26,12 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 
                   @protected AnyhowException dco_decode_AnyhowException(dynamic raw);
 
+@protected RustStreamSink<String> dco_decode_StreamSink_String_Sse(dynamic raw);
+
+@protected RustStreamSink<LogEvent> dco_decode_StreamSink_log_event_Sse(dynamic raw);
+
+@protected RustStreamSink<SessionEvent> dco_decode_StreamSink_session_event_Sse(dynamic raw);
+
 @protected String dco_decode_String(dynamic raw);
 
 @protected AndroidKeyEventAction dco_decode_android_key_event_action(dynamic raw);
@@ -41,8 +47,6 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 @protected SessionConfig dco_decode_box_autoadd_session_config(dynamic raw);
 
 @protected SessionConfigV2 dco_decode_box_autoadd_session_config_v_2(dynamic raw);
-
-@protected SessionEvent dco_decode_box_autoadd_session_event(dynamic raw);
 
 @protected TouchEvent dco_decode_box_autoadd_touch_event(dynamic raw);
 
@@ -65,6 +69,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 @protected List<DeviceInfo> dco_decode_list_device_info(dynamic raw);
 
 @protected Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
+
+@protected LogEvent dco_decode_log_event(dynamic raw);
 
 @protected LogLevel dco_decode_log_level(dynamic raw);
 
@@ -102,6 +108,12 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 
 @protected AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
 
+@protected RustStreamSink<String> sse_decode_StreamSink_String_Sse(SseDeserializer deserializer);
+
+@protected RustStreamSink<LogEvent> sse_decode_StreamSink_log_event_Sse(SseDeserializer deserializer);
+
+@protected RustStreamSink<SessionEvent> sse_decode_StreamSink_session_event_Sse(SseDeserializer deserializer);
+
 @protected String sse_decode_String(SseDeserializer deserializer);
 
 @protected AndroidKeyEventAction sse_decode_android_key_event_action(SseDeserializer deserializer);
@@ -117,8 +129,6 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 @protected SessionConfig sse_decode_box_autoadd_session_config(SseDeserializer deserializer);
 
 @protected SessionConfigV2 sse_decode_box_autoadd_session_config_v_2(SseDeserializer deserializer);
-
-@protected SessionEvent sse_decode_box_autoadd_session_event(SseDeserializer deserializer);
 
 @protected TouchEvent sse_decode_box_autoadd_touch_event(SseDeserializer deserializer);
 
@@ -141,6 +151,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 @protected List<DeviceInfo> sse_decode_list_device_info(SseDeserializer deserializer);
 
 @protected Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
+
+@protected LogEvent sse_decode_log_event(SseDeserializer deserializer);
 
 @protected LogLevel sse_decode_log_level(SseDeserializer deserializer);
 
@@ -178,6 +190,12 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 
 @protected void sse_encode_AnyhowException(AnyhowException self, SseSerializer serializer);
 
+@protected void sse_encode_StreamSink_String_Sse(RustStreamSink<String> self, SseSerializer serializer);
+
+@protected void sse_encode_StreamSink_log_event_Sse(RustStreamSink<LogEvent> self, SseSerializer serializer);
+
+@protected void sse_encode_StreamSink_session_event_Sse(RustStreamSink<SessionEvent> self, SseSerializer serializer);
+
 @protected void sse_encode_String(String self, SseSerializer serializer);
 
 @protected void sse_encode_android_key_event_action(AndroidKeyEventAction self, SseSerializer serializer);
@@ -193,8 +211,6 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 @protected void sse_encode_box_autoadd_session_config(SessionConfig self, SseSerializer serializer);
 
 @protected void sse_encode_box_autoadd_session_config_v_2(SessionConfigV2 self, SseSerializer serializer);
-
-@protected void sse_encode_box_autoadd_session_event(SessionEvent self, SseSerializer serializer);
 
 @protected void sse_encode_box_autoadd_touch_event(TouchEvent self, SseSerializer serializer);
 
@@ -217,6 +233,8 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated_io.dart';
 @protected void sse_encode_list_device_info(List<DeviceInfo> self, SseSerializer serializer);
 
 @protected void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer);
+
+@protected void sse_encode_log_event(LogEvent self, SseSerializer serializer);
 
 @protected void sse_encode_log_level(LogLevel self, SseSerializer serializer);
 

@@ -120,6 +120,37 @@ final int metastate;
         
             }
 
+/// Rust -> Dart 日志事件模型（FRB 流传输）。
+class LogEvent  {
+                /// 日志级别文本（trace/debug/info/warn/error）。
+final String level;
+/// 日志来源 target。
+final String target;
+/// 日志正文。
+final String message;
+/// UTC 毫秒时间戳。
+final PlatformInt64 tsMillis;
+
+                const LogEvent({required this.level ,required this.target ,required this.message ,required this.tsMillis ,});
+
+                
+                
+
+                
+        @override
+        int get hashCode => level.hashCode^target.hashCode^message.hashCode^tsMillis.hashCode;
+        
+
+                
+        @override
+        bool operator ==(Object other) =>
+            identical(this, other) ||
+            other is LogEvent &&
+                runtimeType == other.runtimeType
+                && level == other.level&& target == other.target&& message == other.message&& tsMillis == other.tsMillis;
+        
+            }
+
 /// DLL 侧日志级别。
 enum LogLevel {
                     trace,

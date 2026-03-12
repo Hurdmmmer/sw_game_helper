@@ -79,14 +79,26 @@ Future<void>  requestIdr({required String sessionId }) => RustLib.instance.api.c
 /// 查询会话统计快照（FPS、时延、累计帧计数等）。
 Future<SessionStats>  getSessionStats({required String sessionId }) => RustLib.instance.api.crateGhApiFlutterApiGetSessionStats(sessionId: sessionId);
 
-/// FRB 类型保留锚点：
+/// 订阅会话事件流（替代 Runner -> MethodChannel 事件桥）。
 ///
-/// 目的：
-/// - SessionEvent 由 Runner -> MethodChannel -> Dart 回传，不走 FRB 调用链；
-/// - 但 Dart 业务层仍复用 FRB 生成的 SessionEvent/ErrorCode/OrientationChangeSource 类型。
+/// 说明：
+/// - 该接口返回后，Rust 将异步持续向 `sink` 推送 `SessionEvent`；
+/// - 调用方取消 Dart 订阅后，Rust 转发线程会自动退出。
+Stream<SessionEvent>  subscribeSessionEvents({required String sessionId }) => RustLib.instance.api.crateGhApiFlutterApiSubscribeSessionEvents(sessionId: sessionId);
+
+/// 订阅设备剪贴板事件流（仅 `ClipboardChanged` 文本）。
 ///
-/// 该函数不参与业务流程，仅用于让 FRB 保留上述类型生成。
-Future<SessionEvent>  keepSessionEventTypeForFlutter({required SessionEvent event }) => RustLib.instance.api.crateGhApiFlutterApiKeepSessionEventTypeForFlutter(event: event);
+/// 说明：
+/// - 与会话主事件流解耦，避免上层为处理剪贴板而阻塞状态链路；
+/// - 调用方取消 Dart 订阅后，Rust 转发线程会自动退出。
+Stream<String>  subscribeClipboardEvents({required String sessionId }) => RustLib.instance.api.crateGhApiFlutterApiSubscribeClipboardEvents(sessionId: sessionId);
+
+/// 订阅 Rust 日志流（FRB）。
+///
+/// 说明：
+/// - 全局日志总线，不绑定单会话；
+/// - 调用方取消 Dart 订阅后，Rust 转发线程会自动退出。
+Stream<LogEvent>  subscribeLogs() => RustLib.instance.api.crateGhApiFlutterApiSubscribeLogs();
 
             
             

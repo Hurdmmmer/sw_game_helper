@@ -14,6 +14,7 @@ enum DeviceDecoderMode { preferHardware, forceHardware, forceSoftware }
 ///
 /// 负责统一封装“设备连接、输入转发、会话事件、会话统计”等能力。
 abstract class DeviceService {
+  
   final _statusController = StreamController<ConnectionStatus>.broadcast();
 
   AppDeviceInfo? _currentDevice;
@@ -29,6 +30,11 @@ abstract class DeviceService {
       _currentDevice!.connectionStatus = status;
     }
     _statusController.add(status);
+    
+    // 当设备断开连接时，清空当前设备引用
+    if (status == ConnectionStatus.disconnected) {
+      _currentDevice = null;
+    }
   }
 
   /// 扫描全部设备列表（USB + Wi-Fi）。
@@ -54,7 +60,7 @@ abstract class DeviceService {
   });
 
   /// 断开当前设备会话并清理资源。
-  Future<void> disconnectDevice(AppDeviceInfo device);
+  Future<void> disconnectDevice(AppDeviceInfo? device);
 
   /// 设置当前设备方向模式。
   Future<void> setCurrentDeviceOrientation(DeviceScreenOrientation orientation);
@@ -93,7 +99,7 @@ abstract class DeviceService {
   });
 
   /// 设备连接状态流。
-  Stream<ConnectionStatus> get connectionStatus => _statusController.stream;
+  Stream<ConnectionStatus> get currentConnectStatus => _statusController.stream;
 
   /// 当前连接的设备信息。
   AppDeviceInfo? get connectedDevice => _currentDevice;
@@ -109,10 +115,6 @@ abstract class DeviceService {
 
   set currentDevice(AppDeviceInfo? device) {
     _currentDevice = device;
-  }
-
-  void clearCurrentDevice() {
-    _currentDevice = null;
   }
 
   /// 释放服务资源。

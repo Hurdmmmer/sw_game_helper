@@ -68,7 +68,7 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
                   String get codegenVersion => '2.11.1';
 
                   @override
-                  int get rustContentHash => 2129575494;
+                  int get rustContentHash => -2103028118;
 
                   static const kDefaultExternalLibraryLoaderConfig = ExternalLibraryLoaderConfig(
                     stem: 'rust_scrcpy',
@@ -88,8 +88,6 @@ Future<void> crateGhApiFlutterApiDisposeSession({required String sessionId });
 Future<DeviceInfo> crateGhApiFlutterApiGetDeviceInfo({required String adbPath , required String deviceId });
 
 Future<SessionStats> crateGhApiFlutterApiGetSessionStats({required String sessionId });
-
-Future<SessionEvent> crateGhApiFlutterApiKeepSessionEventTypeForFlutter({required SessionEvent event });
 
 Future<List<DeviceInfo>> crateGhApiFlutterApiListDevices({required String adbPath });
 
@@ -114,6 +112,12 @@ Future<void> crateGhApiFlutterApiSetupLogger({required LogLevel maxLevel });
 Future<void> crateGhApiFlutterApiStartSession({required String sessionId });
 
 Future<void> crateGhApiFlutterApiStopSession({required String sessionId });
+
+Stream<String> crateGhApiFlutterApiSubscribeClipboardEvents({required String sessionId });
+
+Stream<LogEvent> crateGhApiFlutterApiSubscribeLogs();
+
+Stream<SessionEvent> crateGhApiFlutterApiSubscribeSessionEvents({required String sessionId });
 
 
                 }
@@ -253,36 +257,11 @@ sse_encode_String(deviceId, serializer);
         );
         
 
-@override Future<SessionEvent> crateGhApiFlutterApiKeepSessionEventTypeForFlutter({required SessionEvent event })  { return handler.executeNormal(NormalTask(
-            callFfi: (port_) {
-              
-            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_box_autoadd_session_event(event, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6, port: port_);
-            
-            },
-            codec: 
-        SseCodec(
-          decodeSuccessData: sse_decode_session_event,
-          decodeErrorData: null,
-        )
-        ,
-            constMeta: kCrateGhApiFlutterApiKeepSessionEventTypeForFlutterConstMeta,
-            argValues: [event],
-            apiImpl: this,
-        )); }
-
-
-        TaskConstMeta get kCrateGhApiFlutterApiKeepSessionEventTypeForFlutterConstMeta => const TaskConstMeta(
-            debugName: "keep_session_event_type_for_flutter",
-            argNames: ["event"],
-        );
-        
-
 @override Future<List<DeviceInfo>> crateGhApiFlutterApiListDevices({required String adbPath })  { return handler.executeNormal(NormalTask(
             callFfi: (port_) {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(adbPath, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6, port: port_);
             
             },
             codec: 
@@ -307,7 +286,7 @@ sse_encode_String(deviceId, serializer);
             callFfi: (port_) {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 7, port: port_);
             
             },
             codec: 
@@ -333,7 +312,7 @@ sse_encode_String(deviceId, serializer);
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
 sse_encode_box_autoadd_key_event(event, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8, port: port_);
             
             },
             codec: 
@@ -359,7 +338,7 @@ sse_encode_box_autoadd_key_event(event, serializer);
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
 sse_encode_box_autoadd_scroll_event(event, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 9, port: port_);
             
             },
             codec: 
@@ -385,7 +364,7 @@ sse_encode_box_autoadd_scroll_event(event, serializer);
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
 sse_encode_system_key(key, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 10, port: port_);
             
             },
             codec: 
@@ -411,7 +390,7 @@ sse_encode_system_key(key, serializer);
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
 sse_encode_String(text, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 11, port: port_);
             
             },
             codec: 
@@ -437,7 +416,7 @@ sse_encode_String(text, serializer);
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
 sse_encode_box_autoadd_touch_event(event, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 12, port: port_);
             
             },
             codec: 
@@ -464,7 +443,7 @@ sse_encode_box_autoadd_touch_event(event, serializer);
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
 sse_encode_String(text, serializer);
 sse_encode_bool(paste, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 13, port: port_);
             
             },
             codec: 
@@ -490,7 +469,7 @@ sse_encode_bool(paste, serializer);
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
 sse_encode_orientation_mode(mode, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 14, port: port_);
             
             },
             codec: 
@@ -515,7 +494,7 @@ sse_encode_orientation_mode(mode, serializer);
             callFfi: (port_) {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_log_level(maxLevel, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 15, port: port_);
             
             },
             codec: 
@@ -540,7 +519,7 @@ sse_encode_orientation_mode(mode, serializer);
             callFfi: (port_) {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 16, port: port_);
             
             },
             codec: 
@@ -565,7 +544,7 @@ sse_encode_orientation_mode(mode, serializer);
             callFfi: (port_) {
               
             final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
-            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18, port: port_);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 17, port: port_);
             
             },
             codec: 
@@ -586,10 +565,108 @@ sse_encode_orientation_mode(mode, serializer);
         );
         
 
+@override Stream<String> crateGhApiFlutterApiSubscribeClipboardEvents({required String sessionId })  { 
+            final sink = RustStreamSink<String>();
+            unawaited(handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
+sse_encode_StreamSink_String_Sse(sink, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        )
+        ,
+            constMeta: kCrateGhApiFlutterApiSubscribeClipboardEventsConstMeta,
+            argValues: [sessionId, sink],
+            apiImpl: this,
+        )));
+            return sink.stream;
+             }
+
+
+        TaskConstMeta get kCrateGhApiFlutterApiSubscribeClipboardEventsConstMeta => const TaskConstMeta(
+            debugName: "subscribe_clipboard_events",
+            argNames: ["sessionId", "sink"],
+        );
+        
+
+@override Stream<LogEvent> crateGhApiFlutterApiSubscribeLogs()  { 
+            final sink = RustStreamSink<LogEvent>();
+            unawaited(handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_StreamSink_log_event_Sse(sink, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        )
+        ,
+            constMeta: kCrateGhApiFlutterApiSubscribeLogsConstMeta,
+            argValues: [sink],
+            apiImpl: this,
+        )));
+            return sink.stream;
+             }
+
+
+        TaskConstMeta get kCrateGhApiFlutterApiSubscribeLogsConstMeta => const TaskConstMeta(
+            debugName: "subscribe_logs",
+            argNames: ["sink"],
+        );
+        
+
+@override Stream<SessionEvent> crateGhApiFlutterApiSubscribeSessionEvents({required String sessionId })  { 
+            final sink = RustStreamSink<SessionEvent>();
+            unawaited(handler.executeNormal(NormalTask(
+            callFfi: (port_) {
+              
+            final serializer = SseSerializer(generalizedFrbRustBinding);sse_encode_String(sessionId, serializer);
+sse_encode_StreamSink_session_event_Sse(sink, serializer);
+            pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20, port: port_);
+            
+            },
+            codec: 
+        SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_AnyhowException,
+        )
+        ,
+            constMeta: kCrateGhApiFlutterApiSubscribeSessionEventsConstMeta,
+            argValues: [sessionId, sink],
+            apiImpl: this,
+        )));
+            return sink.stream;
+             }
+
+
+        TaskConstMeta get kCrateGhApiFlutterApiSubscribeSessionEventsConstMeta => const TaskConstMeta(
+            debugName: "subscribe_session_events",
+            argNames: ["sessionId", "sink"],
+        );
+        
+
 
 
                   @protected AnyhowException dco_decode_AnyhowException(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return AnyhowException(raw as String); }
+
+@protected RustStreamSink<String> dco_decode_StreamSink_String_Sse(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+throw UnimplementedError(); }
+
+@protected RustStreamSink<LogEvent> dco_decode_StreamSink_log_event_Sse(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+throw UnimplementedError(); }
+
+@protected RustStreamSink<SessionEvent> dco_decode_StreamSink_session_event_Sse(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+throw UnimplementedError(); }
 
 @protected String dco_decode_String(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return raw as String; }
@@ -614,9 +691,6 @@ return dco_decode_session_config(raw); }
 
 @protected SessionConfigV2 dco_decode_box_autoadd_session_config_v_2(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return dco_decode_session_config_v_2(raw); }
-
-@protected SessionEvent dco_decode_box_autoadd_session_event(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
-return dco_decode_session_event(raw); }
 
 @protected TouchEvent dco_decode_box_autoadd_touch_event(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return dco_decode_touch_event(raw); }
@@ -662,6 +736,14 @@ return (raw as List<dynamic>).map(dco_decode_device_info).toList(); }
 
 @protected Uint8List dco_decode_list_prim_u_8_strict(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return raw as Uint8List; }
+
+@protected LogEvent dco_decode_log_event(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
+final arr = raw as List<dynamic>;
+                if (arr.length != 4) throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+                return LogEvent(level: dco_decode_String(arr[0]),
+target: dco_decode_String(arr[1]),
+message: dco_decode_String(arr[2]),
+tsMillis: dco_decode_i_64(arr[3]),); }
 
 @protected LogLevel dco_decode_log_level(dynamic raw){ // Codec=Dco (DartCObject based), see doc to use other codecs
 return LogLevel.values[raw as int]; }
@@ -767,6 +849,15 @@ return; }
 var inner = sse_decode_String(deserializer);
         return AnyhowException(inner); }
 
+@protected RustStreamSink<String> sse_decode_StreamSink_String_Sse(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+throw UnimplementedError('Unreachable ()'); }
+
+@protected RustStreamSink<LogEvent> sse_decode_StreamSink_log_event_Sse(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+throw UnimplementedError('Unreachable ()'); }
+
+@protected RustStreamSink<SessionEvent> sse_decode_StreamSink_session_event_Sse(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+throw UnimplementedError('Unreachable ()'); }
+
 @protected String sse_decode_String(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 var inner = sse_decode_list_prim_u_8_strict(deserializer);
         return utf8.decoder.convert(inner); }
@@ -793,9 +884,6 @@ return (sse_decode_session_config(deserializer)); }
 
 @protected SessionConfigV2 sse_decode_box_autoadd_session_config_v_2(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 return (sse_decode_session_config_v_2(deserializer)); }
-
-@protected SessionEvent sse_decode_box_autoadd_session_event(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-return (sse_decode_session_event(deserializer)); }
 
 @protected TouchEvent sse_decode_box_autoadd_touch_event(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 return (sse_decode_touch_event(deserializer)); }
@@ -847,6 +935,13 @@ return KeyEvent(action: var_action, keycode: var_keycode, repeat: var_repeat, me
 @protected Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 var len_ = sse_decode_i_32(deserializer);
                 return deserializer.buffer.getUint8List(len_); }
+
+@protected LogEvent sse_decode_log_event(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+var var_level = sse_decode_String(deserializer);
+var var_target = sse_decode_String(deserializer);
+var var_message = sse_decode_String(deserializer);
+var var_tsMillis = sse_decode_i_64(deserializer);
+return LogEvent(level: var_level, target: var_target, message: var_message, tsMillis: var_tsMillis); }
 
 @protected LogLevel sse_decode_log_level(SseDeserializer deserializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 var inner = sse_decode_i_32(deserializer);
@@ -959,6 +1054,24 @@ return deserializer.buffer.getUint8(); }
 @protected void sse_encode_AnyhowException(AnyhowException self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_String(self.message, serializer); }
 
+@protected void sse_encode_StreamSink_String_Sse(RustStreamSink<String> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_String(self.setupAndSerialize(codec: SseCodec(
+            decodeSuccessData: sse_decode_String,
+            decodeErrorData: sse_decode_AnyhowException,
+        )), serializer); }
+
+@protected void sse_encode_StreamSink_log_event_Sse(RustStreamSink<LogEvent> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_String(self.setupAndSerialize(codec: SseCodec(
+            decodeSuccessData: sse_decode_log_event,
+            decodeErrorData: sse_decode_AnyhowException,
+        )), serializer); }
+
+@protected void sse_encode_StreamSink_session_event_Sse(RustStreamSink<SessionEvent> self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_String(self.setupAndSerialize(codec: SseCodec(
+            decodeSuccessData: sse_decode_session_event,
+            decodeErrorData: sse_decode_AnyhowException,
+        )), serializer); }
+
 @protected void sse_encode_String(String self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer); }
 
@@ -982,9 +1095,6 @@ sse_encode_session_config(self, serializer); }
 
 @protected void sse_encode_box_autoadd_session_config_v_2(SessionConfigV2 self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_session_config_v_2(self, serializer); }
-
-@protected void sse_encode_box_autoadd_session_event(SessionEvent self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
-sse_encode_session_event(self, serializer); }
 
 @protected void sse_encode_box_autoadd_touch_event(TouchEvent self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_touch_event(self, serializer); }
@@ -1030,6 +1140,13 @@ sse_encode_i_32(self.length, serializer);
 @protected void sse_encode_list_prim_u_8_strict(Uint8List self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_i_32(self.length, serializer);
                     serializer.buffer.putUint8List(self); }
+
+@protected void sse_encode_log_event(LogEvent self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
+sse_encode_String(self.level, serializer);
+sse_encode_String(self.target, serializer);
+sse_encode_String(self.message, serializer);
+sse_encode_i_64(self.tsMillis, serializer);
+ }
 
 @protected void sse_encode_log_level(LogLevel self, SseSerializer serializer){ // Codec=Sse (Serialization based), see doc to use other codecs
 sse_encode_i_32(self.index, serializer); }

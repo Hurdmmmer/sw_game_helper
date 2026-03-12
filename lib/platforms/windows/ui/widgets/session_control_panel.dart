@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:sw_game_helper/enums/connection_status.dart';
 import 'package:sw_game_helper/models/device_info.dart';
 import 'package:sw_game_helper/platforms/windows/providers/device_provider.dart';
 import 'package:sw_game_helper/platforms/windows/providers/settings_provider.dart';
@@ -24,9 +25,6 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
     with SingleTickerProviderStateMixin {
   /// 当前选中的设备 ID。
   String? _selectedDeviceId;
-
-  /// 当前是否处于已连接状态。
-  bool _isConnected = false;
 
   /// 刷新图标旋转控制器（加载中持续旋转）。
   late final AnimationController _refreshRotationController;
@@ -72,7 +70,6 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
     AppDeviceInfo selectedDevice,
     AppSettings appSettings,
   ) async {
-    setState(() => _isConnected = true);
     try {
       final deviceService = ref.read(deviceServiceProvider);
       final success = await deviceService.connectDevice(
@@ -86,7 +83,6 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
         maxFps: appSettings.frameRate,
       );
       if (!success) {
-        setState(() => _isConnected = false);
         if (mounted) {
           ScaffoldMessenger.of(
             context,
@@ -94,22 +90,15 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
         }
       }
     } catch (e) {
-      setState(() => _isConnected = false);
       Log.e('Connection error: $e');
     }
   }
 
   /// 执行断开逻辑。
-  Future<void> _disconnectDevice() async {
-    setState(() => _isConnected = false);
+  Future<void> _disconnectDevice(List<AppDeviceInfo> devices) async {
     try {
       final deviceService = ref.read(deviceServiceProvider);
-      final device = deviceService.connectedDevice;
-      if (device == null) {
-        Log.w('Disconnection skipped: no connected device');
-        return;
-      }
-      await deviceService.disconnectDevice(device);
+      await deviceService.disconnectDevice(deviceService.connectedDevice);
     } catch (e) {
       Log.e('Disconnection error: $e');
     }
@@ -119,11 +108,13 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
   Future<void> _onActionButtonClick(
     List<AppDeviceInfo> devices,
     AppSettings appSettings,
+    bool isConnected,
   ) async {
-    if (_isConnected) {
-      await _disconnectDevice();
+    if (isConnected) {
+      await _disconnectDevice(devices);
       return;
     }
+
     final selected = devices.cast<AppDeviceInfo?>().firstWhere(
       (d) => d?.deviceId == _selectedDeviceId,
       orElse: () => null,
@@ -138,14 +129,14 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
   Widget _buildHeaderRow(
     BuildContext context, {
     required bool isLoading,
-    required bool canConnect,
+    required bool isConnected,
     required List<AppDeviceInfo> devices,
     required AppSettings appSettings,
   }) {
-    final actionLabel = _isConnected ? '断开设备' : '连接设备';
-    final actionIcon = _isConnected ? LucideIcons.unlink2 : LucideIcons.link2;
+    final actionLabel = isConnected ? '断开设备' : '连接设备';
+    final actionIcon = isConnected ? LucideIcons.unlink2 : LucideIcons.link2;
     // 连接状态使用主按钮；已连接后切换为危险按钮，语义更明确。
-    final actionStyle = _isConnected
+    final actionStyle = isConnected
         ? PanelPrimitives.compactDangerButtonStyle(context)
         : PanelPrimitives.compactPrimaryButtonStyle(context);
 
@@ -173,8 +164,9 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
             height: 34,
             child: ElevatedButton.icon(
               style: actionStyle,
-              onPressed: canConnect 
-                  ? () => _onActionButtonClick(devices, appSettings)
+              onPressed: _selectedDeviceId != null
+                  ? () =>
+                        _onActionButtonClick(devices, appSettings, isConnected)
                   : null,
               icon: Icon(actionIcon, size: 14),
               label: Text(actionLabel),
@@ -215,11 +207,18 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
   @override
   Widget build(BuildContext context) {
     final devicesAsync = ref.watch(allDevicesProvider);
+    // 设备连接状态控制器
+    final currentDivceStatusAsync = ref.watch(
+      currentDeviceConnectStatusProvider,
+    );
     // 根据加载状态同步刷新图标旋转动画。
     _syncRefreshRotation(devicesAsync.isLoading);
     final appSettings = ref.watch(settingsProvider);
+
     final devices = devicesAsync.value ?? const <AppDeviceInfo>[];
-    final canConnect = _isConnected || _selectedDeviceId != null;
+
+    final isConnected =
+        currentDivceStatusAsync.asData?.value == ConnectionStatus.connected;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -231,7 +230,7 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
         _buildHeaderRow(
           context,
           isLoading: devicesAsync.isLoading,
-          canConnect: canConnect,
+          isConnected: isConnected,
           devices: devices,
           appSettings: appSettings,
         ),
@@ -243,6 +242,7 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
               isLoading: devicesAsync.isLoading,
               hasError: devicesAsync.hasError,
               selectedDeviceId: _selectedDeviceId,
+              isConnected: isConnected,
               onSelectDevice: (deviceId) =>
                   setState(() => _selectedDeviceId = deviceId),
             ),
@@ -260,6 +260,7 @@ class _DeviceListSection extends StatelessWidget {
   final bool hasError;
   final String? selectedDeviceId;
   final ValueChanged<String?> onSelectDevice;
+  final bool isConnected;
 
   /// 构造函数。
   const _DeviceListSection({
@@ -268,6 +269,7 @@ class _DeviceListSection extends StatelessWidget {
     required this.hasError,
     required this.selectedDeviceId,
     required this.onSelectDevice,
+    required this.isConnected,
   });
 
   /// 构建单个设备连接类型标签。
@@ -303,12 +305,15 @@ class _DeviceListSection extends StatelessWidget {
         (brand != null && brand.trim().isNotEmpty && brand != 'Unknown')
         ? '$brand ${device.name}'
         : device.name;
+        
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
         // 再次点击已选中设备时取消选中，便于用户快速回退选择。
-        onTap: () => onSelectDevice(isSelected ? null : device.deviceId),
+        onTap: !isConnected
+            ? () => onSelectDevice(isSelected ? null : device.deviceId)
+            : null,
         child: Container(
           // 设备列表项关闭内部动画，主题切换时仅跟随全局主题过渡，避免二次闪变。
           padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 7),

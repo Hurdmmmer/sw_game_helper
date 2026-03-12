@@ -1,0 +1,8 @@
+CompileFlags:
+  Add:
+    - -std=c++17
+    - -IC:/flutter/bin/cache/artifacts/engine/common
+    - -IC:/flutter/bin/cache/artifacts/engine/windows-x64
+    - -ID:/FlutterProject/game_helper/sw_game_helper/windows/flutter
+    - -ID:/FlutterProject/game_helper/sw_game_helper/windows/flutter/ephemeral
+    - -ID:/FlutterProject/game_helper/sw_game_helper/windows/flutter/ephemeral/cpp_client_wrapper/include

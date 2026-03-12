@@ -30,22 +30,15 @@ using RsV1FrameCallbackFn = void (*)(void* user_data,
                                      uint32_t height,
                                      uint64_t generation,
                                      int64_t pts);
-using RsSessionEventCallbackFn = void (*)(void* user_data,
-                                          const uint8_t* session_id,
-                                          size_t session_id_len,
-                                          const uint8_t* event_json,
-                                          size_t event_json_len);
-using RsRustLogCallbackFn = void (*)(void* user_data,
-                                     const uint8_t* level,
-                                     size_t level_len,
-                                     const uint8_t* message,
-                                     size_t message_len);
-using RsRegisterV2FrameCallbackFn = bool (*)(RsFrameCallbackFn cb, void* user_data);
-using RsRegisterV1FrameCallbackFn = bool (*)(RsV1FrameCallbackFn cb, void* user_data);
-using RsRegisterSessionEventCallbackFn =
-    bool (*)(RsSessionEventCallbackFn cb, void* user_data);
-using RsRegisterRustLogCallbackFn =
-    bool (*)(RsRustLogCallbackFn cb, void* user_data);
+using RsRegisterV2FrameCallbackFn = bool (*)(RsFrameCallbackFn callback,
+                                             void* user_data);
+using RsRegisterV1FrameCallbackFn = bool (*)(RsV1FrameCallbackFn callback,
+                                             void* user_data);
+using RsClipboardCallbackFn = void (*)(void* user_data,
+                                       const uint8_t* data,
+                                       size_t data_len);
+using RsRegisterClipboardCallbackFn = bool (*)(RsClipboardCallbackFn callback,
+                                               void* user_data);
 
 // rust_scrcpy.dll 自动初始化与符号缓存。
 //
@@ -65,10 +58,8 @@ class RustScrcpyDllApi final {
   RsRegisterV1FrameCallbackFn RegisterV1(std::string* error);
   // 获取“V2 CPU 像素回调注册函数”。
   RsRegisterV2FrameCallbackFn RegisterV2(std::string* error);
-  // 获取“SessionEvent 回调注册函数”。
-  RsRegisterSessionEventCallbackFn RegisterSessionEvent(std::string* error);
-  // 获取“RustLog 回调注册函数”。
-  RsRegisterRustLogCallbackFn RegisterRustLog(std::string* error);
+  // 获取“剪贴板回调注册函数”。
+  RsRegisterClipboardCallbackFn RegisterClipboard(std::string* error);
 
  private:
   RustScrcpyDllApi() = default;
@@ -78,8 +69,7 @@ class RustScrcpyDllApi final {
   HMODULE module_ = nullptr;
   RsRegisterV1FrameCallbackFn register_v1_ = nullptr;
   RsRegisterV2FrameCallbackFn register_v2_ = nullptr;
-  RsRegisterSessionEventCallbackFn register_session_event_ = nullptr;
-  RsRegisterRustLogCallbackFn register_rust_log_ = nullptr;
+  RsRegisterClipboardCallbackFn register_clipboard_ = nullptr;
 };
 
 #endif  // RUNNER_RUST_SCRCPY_DLL_API_H_

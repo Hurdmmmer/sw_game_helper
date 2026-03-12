@@ -1,13 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart'
-    show Clipboard, ClipboardData, MethodCall, MethodChannel;
-import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
+    show Clipboard, ClipboardData, MethodCall, MethodChannel, PlatformException;
 import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_api/flutter_api.dart'
     as flutter_api;
-
+import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
 import 'package:sw_game_helper/utils/logger_service.dart';
 
 /// Windows 下第三方依赖路径解析。
@@ -29,28 +27,48 @@ class ScrcpyRustThirdPartyApi {
   static final ScrcpyRustThirdPartyApi _instance = ScrcpyRustThirdPartyApi._();
 
   static ScrcpyRustThirdPartyApi get instance => _instance;
-
-  /// 会话事件桥接通道：
-  /// - Dart -> Runner：bindSessionEvents；
-  /// - Runner -> Dart：onSessionEvent。
-  static const MethodChannel _sessionEventBridgeChannel = MethodChannel(
-    'session_event_bridge',
+  bool _rustLogBound = false;
+  static const MethodChannel _clipboardBridgeChannel = MethodChannel(
+    'clipboard_bridge',
   );
-
-  /// 会话事件总线（Rust 回调 -> Runner -> MethodChannel -> Dart）。
-  final StreamController<_SessionEventEnvelope> _sessionEventController =
-      StreamController<_SessionEventEnvelope>.broadcast();
-
-  bool _sessionEventBridgeBound = false;
+  bool _clipboardHandlerBound = false;
 
   /// 初始化 Rust DLL 日志级别（仅首次调用生效，后续调用会被 Rust 侧忽略）。
-  ///
-  /// 使用方式：
-  /// `await ScrcpyRustThirdPartyApi.instance.initLogger(maxLevel: bridge.LogLevel.info);`
   Future<void> initLogger({LogLevel maxLevel = LogLevel.info}) async {
-    // 先绑定 Runner 回调桥，确保 Rust 日志可回流到 Flutter。
-    _ensureSessionEventBridgeBound();
     await flutter_api.setupLogger(maxLevel: maxLevel);
+    _ensureRustLogBridgeBound();
+  }
+
+  /// 绑定 Rust 日志流到 App 日志面板（FRB，无 MethodChannel）。
+  void _ensureRustLogBridgeBound() {
+    if (_rustLogBound) {
+      return;
+    }
+    _rustLogBound = true;
+    flutter_api.subscribeLogs().listen(
+      (event) {
+        final level = event.level.toLowerCase();
+        final text = '[Rust][${event.target}] ${event.message}';
+        switch (level) {
+          case 'trace':
+          case 'debug':
+            Log.d(text);
+            break;
+          case 'warn':
+          case 'warning':
+            Log.w(text);
+            break;
+          case 'error':
+            Log.e(text);
+            break;
+          default:
+            Log.i(text);
+        }
+      },
+      onError: (Object e, StackTrace st) {
+        Log.e('Rust 日志流订阅失败: $e', e, st);
+      },
+    );
   }
 
   /// 先列设备，再逐个补全详情（型号/版本）。
@@ -77,15 +95,6 @@ class ScrcpyRustThirdPartyApi {
   }
 
   /// 渲染链路选择（V2）。
-  ///
-  /// - `original`: 原共享句柄链路。
-  /// - `turnScreenOff`:
-  ///   - `true`：会话启动后请求设备熄屏（适合挂机/后台投屏场景）；
-  ///   - `false`：保持默认亮屏行为，不主动修改设备电源状态。
-  ///
-  /// 说明：
-  /// - 该参数会透传到 Rust `SessionConfig.turnScreenOff`；
-  /// - Rust 侧会在建链完成后执行“最佳努力”熄屏，不会因为熄屏失败而中断会话。
   Future<String> connectV2({
     required String deviceId,
     required RenderPipelineMode renderPipelineMode,
@@ -99,19 +108,15 @@ class ScrcpyRustThirdPartyApi {
       adbPath: ThirdPartyPaths.adb,
       serverPath: ThirdPartyPaths.scrcpyServer,
       deviceId: deviceId,
-      // 透传设置页参数：分辨率上限、码率、帧率。
       maxSize: maxSize,
       bitRate: bitRate,
       maxFps: maxFps,
       videoPort: 27183,
       controlPort: 27184,
       videoEncoder: null,
-      // 关键透传：由调用方决定是否在建链完成后请求熄屏。
       turnScreenOff: turnScreenOff,
       stayAwake: false,
       scrcpyVerbosity: 'info',
-      // 默认先走 1 秒关键帧周期，兼顾恢复速度。
-      // 如果某些机型不兼容，可在后续策略中回退到 0。
       intraRefreshPeriod: 1,
     );
 
@@ -126,7 +131,7 @@ class ScrcpyRustThirdPartyApi {
     return sessionId;
   }
 
-  /// 断开与设备的连接
+  /// 断开与设备的连接。
   Future<void> disconnect(String sessionId) async {
     final sw = Stopwatch()..start();
     Log.i('disconnect start: session=$sessionId');
@@ -154,7 +159,6 @@ class ScrcpyRustThirdPartyApi {
   }
 
   /// 发送文本输入到当前会话。
-  /// 该接口用于中文输入法和符号输入，优先于 keycode 模式。
   Future<void> sendText(String sessionId, String text) async {
     if (text.isEmpty) {
       return;
@@ -182,11 +186,77 @@ class ScrcpyRustThirdPartyApi {
     await flutter_api.sendScroll(sessionId: sessionId, event: event);
   }
 
+  /// 同步设备剪贴板到 Windows。
+  ///
+  /// 策略：
+  /// - 首次写入失败时，仅在“剪贴板被占用”场景重试一次；
+  /// - 第二次仍失败则记录并放弃，不向外抛异常，避免污染会话事件流。
+  Future<void> _syncDeviceClipboardToWindows(String text) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: text));
+      Log.i('剪贴板同步：设备内容已写入 Windows');
+      return;
+    } on PlatformException catch (e) {
+      if (!_isClipboardBusyError(e)) {
+        Log.w('剪贴板同步失败(非占用错误): $e');
+        return;
+      }
+      // 仅重试一次，避免复杂重试策略引入额外维护成本。
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      try {
+        await Clipboard.setData(ClipboardData(text: text));
+        Log.i('剪贴板同步：重试一次后成功');
+      } on PlatformException catch (e2) {
+        Log.w('剪贴板同步失败(重试后放弃): $e2');
+      } catch (e2) {
+        Log.w('剪贴板同步失败(重试后放弃): $e2');
+      }
+    } catch (e) {
+      Log.w('剪贴板同步失败: $e');
+    }
+  }
+
+  /// 判断是否为“Windows 剪贴板暂时被占用”错误。
+  bool _isClipboardBusyError(PlatformException e) {
+    final message = (e.message ?? '').toLowerCase();
+    final details = '${e.details}'.toLowerCase();
+    return message.contains('unable to open clipboard') ||
+        details == '5' ||
+        details.contains('error, 5');
+  }
+
+  /// 订阅会话事件流（FRB 直连 Rust，无 MethodChannel 中转）。
   Stream<SessionEvent> streamSessionEvents(String sessionId) {
-    _ensureSessionEventBridgeBound();
-    return _sessionEventController.stream
-        .where((item) => item.sessionId == sessionId)
-        .map((item) => item.event);
+    return flutter_api.subscribeSessionEvents(sessionId: sessionId);
+  }
+
+  /// 绑定“设备剪贴板 -> Windows”独立同步通道（Rust 独立 API）。
+  Future<void> bindClipboardSync(String sessionId) async {
+    if (!_clipboardHandlerBound) {
+      _clipboardHandlerBound = true;
+      _clipboardBridgeChannel.setMethodCallHandler((MethodCall call) async {
+        if (call.method != 'onClipboard') {
+          return;
+        }
+        final text = call.arguments is String ? call.arguments as String : '';
+        if (text.isEmpty) {
+          return;
+        }
+        // 回调旁路执行，不阻塞会话状态链路。
+        unawaited(_syncDeviceClipboardToWindows(text));
+      });
+    }
+    await _clipboardBridgeChannel.invokeMethod<bool>('bindClipboardCallback', {
+      'sessionId': sessionId,
+    });
+  }
+
+  /// 解绑独立剪贴板同步通道。
+  Future<void> unbindClipboardSync(String sessionId) async {
+    await _clipboardBridgeChannel.invokeMethod<bool>(
+      'unbindClipboardCallback',
+      {'sessionId': sessionId},
+    );
   }
 
   Future<SessionStats> getSessionStats(String sessionId) {
@@ -205,256 +275,7 @@ class ScrcpyRustThirdPartyApi {
   }
 
   /// 在同一个 sessionId 上重启运行时（不销毁会话对象）。
-  ///
-  /// 适用于“运行时异常后的快速恢复”，可避免 create/dispose 带来的额外开销。
   Future<void> restartSession(String sessionId) async {
     await flutter_api.startSession(sessionId: sessionId);
   }
-
-  /// 只初始化一次：注册 MethodChannel 回调 + 通知 Runner 绑定 Rust 回调。
-  void _ensureSessionEventBridgeBound() {
-    if (_sessionEventBridgeBound) {
-      return;
-    }
-    _sessionEventBridgeBound = true;
-    _sessionEventBridgeChannel.setMethodCallHandler(_handleBridgeCallback);
-    unawaited(
-      _sessionEventBridgeChannel
-          .invokeMethod<bool>('bindSessionEvents')
-          .catchError((Object e, StackTrace st) {
-            Log.w('绑定 SessionEvent 回调失败: $e');
-            Log.e('绑定 SessionEvent 回调异常堆栈', e, st);
-            return false;
-          }),
-    );
-  }
-
-  /// 处理 Runner -> Dart 的回调消息。
-  Future<dynamic> _handleBridgeCallback(MethodCall call) async {
-    if (call.method == 'onRustLog') {
-      _handleRustLogEvent(call.arguments);
-      return null;
-    }
-    if (call.method != 'onSessionEvent') {
-      return null;
-    }
-    final args = call.arguments;
-    if (args is! Map) {
-      return null;
-    }
-
-    final sessionId = args['sessionId']?.toString();
-    final eventJson = args['eventJson']?.toString();
-    if (sessionId == null || sessionId.isEmpty || eventJson == null) {
-      return null;
-    }
-
-    try {
-      if (await _handleClipboardChangedEvent(eventJson)) {
-        return null;
-      }
-      final event = _parseSessionEvent(eventJson);
-      if (event != null && !_sessionEventController.isClosed) {
-        _sessionEventController.add(
-          _SessionEventEnvelope(sessionId: sessionId, event: event),
-        );
-      }
-    } catch (e, st) {
-      Log.w('解析 SessionEvent 回调失败: $e');
-      Log.e('解析 SessionEvent 回调异常堆栈', e, st);
-    }
-    return null;
-  }
-
-  /// 处理 Runner 回传的 Rust tracing 日志。
-  ///
-  /// 参数结构：
-  /// - level: 日志级别（TRACE/DEBUG/INFO/WARN/ERROR）；
-  /// - message: 日志正文。
-  void _handleRustLogEvent(Object? arguments) {
-    if (arguments is! Map) {
-      return;
-    }
-    final level = arguments['level']?.toString().toUpperCase() ?? 'INFO';
-    final rawMessage = arguments['message']?.toString() ?? '';
-    if (rawMessage.isEmpty) {
-      return;
-    }
-    final message = _normalizeRustMessage(level: level, raw: rawMessage);
-    final prefixed = '[Rust] $message';
-    switch (level) {
-      case 'TRACE':
-        Log.v(prefixed);
-        break;
-      case 'DEBUG':
-        Log.d(prefixed);
-        break;
-      case 'WARN':
-      case 'WARNING':
-        Log.w(prefixed);
-        break;
-      case 'ERROR':
-      case 'FATAL':
-        Log.e(prefixed);
-        break;
-      default:
-        Log.i(prefixed);
-        break;
-    }
-  }
-
-  /// 归一化 Rust tracing 文本，提升可读性。
-  ///
-  /// 输入示例：
-  /// - `target=rust_scrcpy::scrcpy::client::scrcpy_conn message=[连接] ...`
-  /// 输出示例：
-  /// - `[scrcpy_conn] [连接] ...`
-  String _normalizeRustMessage({
-    required String level,
-    required String raw,
-  }) {
-    final trimmed = raw.trim();
-    final targetMatch = RegExp(
-      r'^target=([^\s]+)\s+message=(.+)$',
-    ).firstMatch(trimmed);
-    if (targetMatch == null) {
-      return _sanitizeRustMessageBody(level, trimmed);
-    }
-    final target = targetMatch.group(1) ?? '';
-    var message = targetMatch.group(2) ?? '';
-    message = message.trim();
-    if (message.length >= 2 &&
-        ((message.startsWith('"') && message.endsWith('"')) ||
-            (message.startsWith("'") && message.endsWith("'")))) {
-      message = message.substring(1, message.length - 1);
-    }
-    final segments = target.split('::');
-    final shortTarget = segments.isNotEmpty ? segments.last : target;
-    final body = _sanitizeRustMessageBody(level, message);
-    return '[$shortTarget] $body';
-  }
-
-  /// 清理 Rust 日志正文中的重复级别字段，避免一行内多次出现 INFO/WARN。
-  String _sanitizeRustMessageBody(String level, String body) {
-    var result = body.replaceAll(RegExp(r'\s+'), ' ').trim();
-
-    // 统一去掉 Rust 传入字符串中的 level=INFO 这类重复信息。
-    result = result.replaceAll(RegExp(r'(^|\s)level=[A-Z]+(\s|$)'), ' ');
-
-    // 常见模式：`[server] INFO: ...`，外层已经有日志级别，正文无需再重复。
-    result = result.replaceAllMapped(
-      RegExp(r'\[(server|client)\]\s+(TRACE|DEBUG|INFO|WARN|ERROR):\s*'),
-      (m) => '[${m.group(1)}] ',
-    );
-
-    // 如果正文开头再次重复当前级别，则去掉，保留业务文本。
-    result = result.replaceFirst(RegExp('^${RegExp.escape(level)}\\s*:?\\s*'), '');
-
-    return result.replaceAll(RegExp(r'\s+'), ' ').trim();
-  }
-
-  /// 处理 Rust 自定义剪贴板事件：设备复制 -> Windows 剪贴板同步。
-  Future<bool> _handleClipboardChangedEvent(String eventJson) async {
-    final decoded = jsonDecode(eventJson);
-    if (decoded is! Map || !decoded.containsKey('ClipboardChanged')) {
-      return false;
-    }
-    final payload = decoded['ClipboardChanged'];
-    if (payload is! Map) {
-      return false;
-    }
-    final text = payload['text']?.toString() ?? '';
-    if (text.isEmpty) {
-      return true;
-    }
-    await Clipboard.setData(ClipboardData(text: text));
-    Log.i('剪贴板同步：设备内容已写入 Windows');
-    return true;
-  }
-
-  /// 将 Rust 侧 JSON 事件解码为 FRB 生成的 `SessionEvent`。
-  SessionEvent? _parseSessionEvent(String jsonText) {
-    final decoded = jsonDecode(jsonText);
-    if (decoded is String) {
-      if (decoded == 'Starting') return const SessionEvent.starting();
-      if (decoded == 'Running') return const SessionEvent.running();
-      if (decoded == 'Reconnecting') {
-        return const SessionEvent.reconnecting();
-      }
-      if (decoded == 'Stopped') return const SessionEvent.stopped();
-      return null;
-    }
-    if (decoded is! Map) {
-      return null;
-    }
-    if (decoded.containsKey('Error')) {
-      final payload = decoded['Error'];
-      if (payload is! Map) return null;
-      return SessionEvent.error(
-        code: _parseErrorCode(payload['code']?.toString()),
-        message: payload['message']?.toString() ?? '',
-      );
-    }
-    if (decoded.containsKey('OrientationChanged')) {
-      final payload = decoded['OrientationChanged'];
-      if (payload is! Map) return null;
-      return SessionEvent.orientationChanged(
-        mode: _parseOrientationMode(payload['mode']?.toString()),
-        source: _parseOrientationSource(payload['source']?.toString()),
-      );
-    }
-    if (decoded.containsKey('ResolutionChanged')) {
-      final payload = decoded['ResolutionChanged'];
-      if (payload is! Map) return null;
-      return SessionEvent.resolutionChanged(
-        width: _toInt(payload['width']),
-        height: _toInt(payload['height']),
-        newHandle: _toInt(payload['new_handle']),
-        generation: BigInt.from(_toInt(payload['generation'])),
-      );
-    }
-    return null;
-  }
-
-  ErrorCode _parseErrorCode(String? text) {
-    return switch (text) {
-      'InvalidSession' => ErrorCode.invalidSession,
-      'AlreadyRunning' => ErrorCode.alreadyRunning,
-      'NotRunning' => ErrorCode.notRunning,
-      'DeviceDisconnected' => ErrorCode.deviceDisconnected,
-      'DecodeFailed' => ErrorCode.decodeFailed,
-      'TextureFailed' => ErrorCode.textureFailed,
-      'ControlFailed' => ErrorCode.controlFailed,
-      _ => ErrorCode.internal,
-    };
-  }
-
-  OrientationMode _parseOrientationMode(String? text) {
-    return switch (text) {
-      'Portrait' => OrientationMode.portrait,
-      'Landscape' => OrientationMode.landscape,
-      _ => OrientationMode.auto,
-    };
-  }
-
-  OrientationChangeSource _parseOrientationSource(String? text) {
-    return switch (text) {
-      'ManualApi' => OrientationChangeSource.manualApi,
-      _ => OrientationChangeSource.autoSensor,
-    };
-  }
-
-  int _toInt(Object? value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.tryParse(value?.toString() ?? '') ?? 0;
-  }
-}
-
-/// 事件分发内部结构：保留 sessionId 方便做单会话过滤。
-class _SessionEventEnvelope {
-  final String sessionId;
-  final SessionEvent event;
-
-  const _SessionEventEnvelope({required this.sessionId, required this.event});
 }

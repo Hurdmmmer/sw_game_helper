@@ -53,7 +53,7 @@ class _LayoutPitfallPageState extends State<LayoutPitfallPage> {
                     bottom: 0,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.3),
+                        color: Colors.red.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.red),
                       ),
@@ -111,7 +111,7 @@ class _LayoutPitfallPageState extends State<LayoutPitfallPage> {
                         flex: 1,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.3),
+                            color: Colors.green.withValues(alpha: 0.3),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.green),
                           ),

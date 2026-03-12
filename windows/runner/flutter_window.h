@@ -43,11 +43,7 @@ class FlutterWindow : public Win32Window {
                      uint32_t height,
                      uint64_t generation,
                      int64_t pts);
-  /// Rust 会话事件回调入口（JSON 字符串透传到 Dart）。
-  void OnRustSessionEvent(const std::string& session_id,
-                          const std::string& event_json);
-  /// Rust 日志回调入口（level + message 透传到 Dart）。
-  void OnRustLog(const std::string& level, const std::string& message);
+  void OnRustClipboard(const uint8_t* data, size_t data_len);
 
  protected:
   bool OnCreate() override;
@@ -177,10 +173,13 @@ class FlutterWindow : public Win32Window {
   std::atomic<bool> rust_v2_callback_registered_{false};
   // V1 回调注册标记：确保只向 Rust 注册一次回调函数指针。
   std::atomic<bool> rust_v1_callback_registered_{false};
-  // SessionEvent 回调注册标记：确保只向 Rust 注册一次回调函数指针。
-  std::atomic<bool> rust_session_event_callback_registered_{false};
-  // RustLog 回调注册标记：确保只向 Rust 注册一次回调函数指针。
-  std::atomic<bool> rust_log_callback_registered_{false};
+  // 剪贴板回调注册标记：确保只向 Rust 注册一次回调函数指针。
+  std::atomic<bool> rust_clipboard_callback_registered_{false};
+  // 是否启用剪贴板回调转发（由 Dart bind/unbind 控制）。
+  std::atomic<bool> clipboard_callback_enabled_{false};
+  std::mutex clipboard_event_mutex_;
+  std::vector<std::string> pending_clipboard_events_;
+  static constexpr UINT kClipboardEventMessage = WM_APP + 201;
 
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       window_title_channel_;
@@ -189,11 +188,11 @@ class FlutterWindow : public Win32Window {
   /// - 不承载会话事件绑定与分发。
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       texture_bridge_channel_;
-  /// 会话事件桥接通道：
-  /// - Dart -> Runner：bindSessionEvents（一次性绑定）；
-  /// - Runner -> Dart：onSessionEvent（事件分发）。
+  /// 剪贴板桥接通道：
+  /// - Dart -> Runner：bind/unbind 剪贴板回调；
+  /// - Runner -> Dart：onClipboard 事件回调。
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
-      session_event_bridge_channel_;
+      clipboard_bridge_channel_;
 
   void RegisterWindowTitleChannel();
   /// 注册纹理桥接通道。
@@ -202,12 +201,8 @@ class FlutterWindow : public Win32Window {
   /// - 建立 MethodChannel `texture_bridge`；
   /// - 绑定纹理方法分发入口（HandleTextureBridgeCall）。
   void RegisterTextureBridge();
-  /// 注册会话事件桥接通道。
-  ///
-  /// 作用：
-  /// - 建立 MethodChannel `session_event_bridge`；
-  /// - 绑定事件方法分发入口（HandleSessionEventBridgeCall）。
-  void RegisterSessionEventBridge();
+  /// 注册剪贴板桥接通道。
+  void RegisterClipboardBridge();
 
   bool CreateTexture(const flutter::EncodableMap& args, int64_t* texture_id,
                      std::string* error);
@@ -220,12 +215,6 @@ class FlutterWindow : public Win32Window {
   bool BindCpuPixelTexture(const flutter::EncodableMap& args, std::string* error);
   // 绑定 V1 DXGI 纹理到 Rust 回调驱动链路。
   bool BindDxgiTexture(const flutter::EncodableMap& args, std::string* error);
-  /// 绑定会话事件回调链路（Rust -> Runner -> Dart）。
-  ///
-  /// 调用时机：
-  /// - 由 Dart 侧初始化调用 `bindSessionEvents` 触发；
-  /// - 仅需绑定一次，重复调用幂等。
-  bool BindSessionEvents(std::string* error);
   bool DisposeCpuPixelTexture(const flutter::EncodableMap& args,
                               std::string* error);
   /// 确保 Rust V2 回调已注册（CPU 像素帧路径）。
@@ -250,24 +239,8 @@ class FlutterWindow : public Win32Window {
   /// - true：已注册成功（包含“此前已注册”的幂等成功）；
   /// - false：注册失败，调用方应中止后续绑定流程。
   bool EnsureRustV1CallbackRegistered(std::string* error);
-  /// 确保 Rust SessionEvent 回调已注册（会话事件 JSON 路径）。
-  ///
-  /// 参数：
-  /// - error：失败时写入可读错误信息；成功时保持不变。
-  ///
-  /// 返回：
-  /// - true：已注册成功（包含“此前已注册”的幂等成功）；
-  /// - false：注册失败，调用方应中止后续事件绑定流程。
-  bool EnsureRustSessionEventCallbackRegistered(std::string* error);
-  /// 确保 Rust 日志回调已注册（Rust tracing 日志路径）。
-  ///
-  /// 参数：
-  /// - error：失败时写入可读错误信息；成功时保持不变。
-  ///
-  /// 返回：
-  /// - true：已注册成功（包含“此前已注册”的幂等成功）；
-  /// - false：注册失败，调用方应中止后续日志绑定流程。
-  bool EnsureRustLogCallbackRegistered(std::string* error);
+  /// 确保 Rust 剪贴板回调已注册。
+  bool EnsureRustClipboardCallbackRegistered(std::string* error);
   /// 纹理桥接方法分发入口（用于收敛 flutter_window.cpp 体积）。
   ///
   /// 承载的方法族：
@@ -277,13 +250,10 @@ class FlutterWindow : public Win32Window {
   bool HandleTextureBridgeCall(
       const flutter::MethodCall<flutter::EncodableValue>& call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
-  /// 会话事件桥接方法分发入口。
-  ///
-  /// 承载的方法族：
-  /// - bindSessionEvents。
-  bool HandleSessionEventBridgeCall(
+  bool HandleClipboardBridgeCall(
       const flutter::MethodCall<flutter::EncodableValue>& call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
+  void DispatchClipboardEventsToDart();
   void DisposeAllTextures();
 
   // ── Flutter 纹理回调（静态方法，符合 C 函数指针签名要求）────────────────

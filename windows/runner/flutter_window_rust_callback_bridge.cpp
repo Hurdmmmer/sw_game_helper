@@ -39,36 +39,13 @@ void RustV1FrameBridge(void* user_data,
   self->OnRustV1Frame(handle, width, height, generation, pts);
 }
 
-// Rust -> C++ 桥回调（SessionEvent JSON）。
-void RustSessionEventBridge(void* user_data,
-                            const uint8_t* session_id,
-                            size_t session_id_len,
-                            const uint8_t* event_json,
-                            size_t event_json_len) {
+// Rust -> C++ 桥回调（剪贴板文本）。
+void RustClipboardBridge(void* user_data, const uint8_t* data, size_t data_len) {
   auto* self = static_cast<FlutterWindow*>(user_data);
-  if (self == nullptr || session_id == nullptr || event_json == nullptr ||
-      session_id_len == 0 || event_json_len == 0) {
+  if (self == nullptr) {
     return;
   }
-  self->OnRustSessionEvent(
-      std::string(reinterpret_cast<const char*>(session_id), session_id_len),
-      std::string(reinterpret_cast<const char*>(event_json), event_json_len));
-}
-
-// Rust -> C++ 桥回调（Rust tracing 日志）。
-void RustLogBridge(void* user_data,
-                   const uint8_t* level,
-                   size_t level_len,
-                   const uint8_t* message,
-                   size_t message_len) {
-  auto* self = static_cast<FlutterWindow*>(user_data);
-  if (self == nullptr || level == nullptr || message == nullptr ||
-      level_len == 0 || message_len == 0) {
-    return;
-  }
-  self->OnRustLog(
-      std::string(reinterpret_cast<const char*>(level), level_len),
-      std::string(reinterpret_cast<const char*>(message), message_len));
+  self->OnRustClipboard(data, data_len);
 }
 }  // namespace
 
@@ -126,76 +103,22 @@ bool FlutterWindow::EnsureRustV1CallbackRegistered(std::string* error) {
   return true;
 }
 
-bool FlutterWindow::EnsureRustSessionEventCallbackRegistered(std::string* error) {
-  // 功能：确保 Rust SessionEvent 回调注册完成（事件 JSON 路径）。
-  //
-  // 参数说明：
-  // - error：输出参数。注册失败时写入错误文案。
-  //
-  // 设计说明：
-  // - 会话事件回调只需要注册一次，重复调用直接返回成功；
-  // - 由 bindSessionEvents 间接触发，作为事件桥初始化前置步骤。
-  if (rust_session_event_callback_registered_.load(std::memory_order_acquire)) {
+bool FlutterWindow::EnsureRustClipboardCallbackRegistered(std::string* error) {
+  if (rust_clipboard_callback_registered_.load(std::memory_order_acquire)) {
     return true;
   }
   auto& rust_api = RustScrcpyDllApi::Instance();
-  const auto register_fn = rust_api.RegisterSessionEvent(error);
+  const auto register_fn = rust_api.RegisterClipboard(error);
   if (register_fn == nullptr) {
     return false;
   }
-  const bool ok = register_fn(&RustSessionEventBridge, this);
+  const bool ok = register_fn(&RustClipboardBridge, this);
   if (!ok) {
-    if (error) *error = "SessionEvent 回调注册失败：Rust 返回 false";
+    if (error) *error = "Clipboard 回调注册失败：Rust 返回 false";
     return false;
   }
-  rust_session_event_callback_registered_.store(true, std::memory_order_release);
-  OutputDebugStringA("[事件] Rust SessionEvent 回调注册成功\n");
-  return true;
-}
-
-bool FlutterWindow::EnsureRustLogCallbackRegistered(std::string* error) {
-  // 功能：确保 Rust tracing 日志回调注册完成。
-  //
-  // 参数说明：
-  // - error：输出参数。注册失败时写入错误文案。
-  //
-  // 设计说明：
-  // - 回调只需要注册一次，重复调用直接返回成功；
-  // - 由 bindSessionEvents 一并触发，避免 Dart 侧额外初始化流程。
-  if (rust_log_callback_registered_.load(std::memory_order_acquire)) {
-    return true;
-  }
-  auto& rust_api = RustScrcpyDllApi::Instance();
-  const auto register_fn = rust_api.RegisterRustLog(error);
-  if (register_fn == nullptr) {
-    return false;
-  }
-  const bool ok = register_fn(&RustLogBridge, this);
-  if (!ok) {
-    if (error) *error = "RustLog 回调注册失败：Rust 返回 false";
-    return false;
-  }
-  rust_log_callback_registered_.store(true, std::memory_order_release);
-  OutputDebugStringA("[日志] Rust tracing 回调注册成功\n");
-  return true;
-}
-
-bool FlutterWindow::BindSessionEvents(std::string* error) {
-  // 功能：对外提供“会话事件桥绑定”动作。
-  //
-  // 参数说明：
-  // - error：输出参数。绑定失败时写入错误文案。
-  //
-  // 行为说明：
-  // - 该函数不接收业务参数，只负责完成回调链路初始化；
-  // - 成功后 Rust 事件将通过窗口消息转发到 session_event_bridge。
-  if (!EnsureRustSessionEventCallbackRegistered(error)) {
-    return false;
-  }
-  if (!EnsureRustLogCallbackRegistered(error)) {
-    return false;
-  }
-  OutputDebugStringA("[事件] 已绑定 SessionEvent 回调链路\n");
+  rust_clipboard_callback_registered_.store(true, std::memory_order_release);
+  OutputDebugStringA("[剪贴板] Rust 回调注册成功\n");
   return true;
 }
 
@@ -258,48 +181,6 @@ bool FlutterWindow::BindDxgiTexture(const flutter::EncodableMap& args,
       ("[渲染-V1] 绑定 DXGI 纹理: textureId=" + std::to_string(texture_id) + "\n")
           .c_str());
   return true;
-}
-
-void FlutterWindow::OnRustSessionEvent(const std::string& session_id,
-                                       const std::string& event_json) {
-  // 此处不解析业务 JSON，只负责跨线程转发到窗口消息队列。
-  if (session_event_bridge_channel_ == nullptr) {
-    return;
-  }
-  const HWND hwnd = GetHandle();
-  if (hwnd == nullptr) {
-    return;
-  }
-  auto payload = std::make_unique<SessionEventPayload>();
-  payload->session_id = session_id;
-  payload->event_json = event_json;
-  // 通过窗口消息切换到 UI 线程再调用 MethodChannel，避免跨线程直接触达 Dart。
-  if (!PostMessageW(hwnd, kRustSessionEventMessage,
-                    reinterpret_cast<WPARAM>(payload.get()), 0)) {
-    return;
-  }
-  payload.release();
-}
-
-void FlutterWindow::OnRustLog(const std::string& level,
-                              const std::string& message) {
-  // 此处不做日志格式化，仅负责跨线程转发到窗口消息队列。
-  if (session_event_bridge_channel_ == nullptr) {
-    return;
-  }
-  const HWND hwnd = GetHandle();
-  if (hwnd == nullptr) {
-    return;
-  }
-  auto payload = std::make_unique<RustLogPayload>();
-  payload->level = level;
-  payload->message = message;
-  // 通过窗口消息切换到 UI 线程再调用 MethodChannel，避免跨线程直接触达 Dart。
-  if (!PostMessageW(hwnd, kRustLogMessage,
-                    reinterpret_cast<WPARAM>(payload.get()), 0)) {
-    return;
-  }
-  payload.release();
 }
 
 void FlutterWindow::OnRustV1Frame(int64_t handle,
@@ -472,5 +353,38 @@ void FlutterWindow::OnRustV2Frame(uint64_t frame_id,
       texture_registrar_, texture_id);
   if (!ok) {
     OutputDebugStringA("[错误][渲染-V2] Rust 回调标记新帧失败\n");
+  }
+}
+
+void FlutterWindow::OnRustClipboard(const uint8_t* data, size_t data_len) {
+  if (data == nullptr || data_len == 0) {
+    return;
+  }
+  if (!clipboard_callback_enabled_.load(std::memory_order_acquire)) {
+    return;
+  }
+  std::string text(reinterpret_cast<const char*>(data), data_len);
+  {
+    std::lock_guard<std::mutex> lock(clipboard_event_mutex_);
+    pending_clipboard_events_.push_back(std::move(text));
+  }
+  const HWND hwnd = GetHandle();
+  if (hwnd != nullptr) {
+    PostMessage(hwnd, kClipboardEventMessage, 0, 0);
+  }
+}
+
+void FlutterWindow::DispatchClipboardEventsToDart() {
+  if (!clipboard_bridge_channel_) {
+    return;
+  }
+  std::vector<std::string> events;
+  {
+    std::lock_guard<std::mutex> lock(clipboard_event_mutex_);
+    events.swap(pending_clipboard_events_);
+  }
+  for (const auto& text : events) {
+    clipboard_bridge_channel_->InvokeMethod(
+        "onClipboard", std::make_unique<flutter::EncodableValue>(text));
   }
 }

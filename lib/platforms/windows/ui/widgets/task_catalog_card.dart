@@ -101,25 +101,28 @@ class _TaskCatalogCardState extends State<TaskCatalogCard> {
                   ),
                 ),
               ),
-                SizedBox(
-                  height: 34,
-                  child: ElevatedButton(
-                    // 任务执行按钮按语义区分颜色：
-                    // 未运行=开始任务（主色），运行中=停止任务（危险色）。
-                    style: (currentRunning
-                            ? PanelPrimitives.compactDangerButtonStyle(context)
-                            : PanelPrimitives.compactPrimaryButtonStyle(
-                                context,
-                              ))
-                        .copyWith(
-                          minimumSize: const WidgetStatePropertyAll(
-                            Size(104, 34),
+              SizedBox(
+                height: 34,
+                child: ElevatedButton(
+                  // 任务执行按钮按语义区分颜色：
+                  // 未运行=开始任务（主色），运行中=停止任务（危险色）。
+                  style:
+                      (currentRunning
+                              ? PanelPrimitives.compactDangerButtonStyle(
+                                  context,
+                                )
+                              : PanelPrimitives.compactPrimaryButtonStyle(
+                                  context,
+                                ))
+                          .copyWith(
+                            minimumSize: const WidgetStatePropertyAll(
+                              Size(104, 34),
+                            ),
                           ),
-                        ),
-                    onPressed: _toggleCurrentTaskRunning,
-                    child: Text(currentRunning ? '停止任务' : '开始任务'),
-                  ),
+                  onPressed: _toggleCurrentTaskRunning,
+                  child: Text(currentRunning ? '停止任务' : '开始任务'),
                 ),
+              ),
             ],
           ),
         ),
@@ -179,7 +182,7 @@ class _StatusDot extends StatelessWidget {
   final double size;
 
   /// 构造函数。
-  const _StatusDot({super.key, required this.active, this.size = 8.0});
+  const _StatusDot({required this.active, this.size = 8.0});
 
   @override
   /// 构建状态点。
@@ -206,11 +209,7 @@ class _InteTaskCard extends StatefulWidget {
   /// 内部任务卡片
   /// [taskType] 任务类型
   /// [taskRunning] 任务是否正在运行
-  const _InteTaskCard({
-    super.key,
-    required this.taskRunning,
-    required this.taskType,
-  });
+  const _InteTaskCard({required this.taskRunning, required this.taskType});
 
   /// 创建状态对象。
   @override
