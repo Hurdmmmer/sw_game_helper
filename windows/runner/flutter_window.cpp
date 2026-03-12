@@ -135,6 +135,21 @@ LRESULT FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
       }
       return 0;
     }
+    case kRustLogMessage: {
+      std::unique_ptr<RustLogPayload> payload(
+          reinterpret_cast<RustLogPayload*>(wparam));
+      if (payload && session_event_bridge_channel_) {
+        flutter::EncodableMap args;
+        args[flutter::EncodableValue("level")] =
+            flutter::EncodableValue(payload->level);
+        args[flutter::EncodableValue("message")] =
+            flutter::EncodableValue(payload->message);
+        session_event_bridge_channel_->InvokeMethod(
+            "onRustLog",
+            std::make_unique<flutter::EncodableValue>(std::move(args)));
+      }
+      return 0;
+    }
   }
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);
 }

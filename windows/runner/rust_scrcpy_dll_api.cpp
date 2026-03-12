@@ -73,3 +73,13 @@ RsRegisterSessionEventCallbackFn RustScrcpyDllApi::RegisterSessionEvent(
   }
   return register_session_event_;
 }
+
+RsRegisterRustLogCallbackFn RustScrcpyDllApi::RegisterRustLog(
+    std::string* error) {
+  if (!EnsureLoaded(error)) return nullptr;
+  if (register_rust_log_ == nullptr) {
+    register_rust_log_ = reinterpret_cast<RsRegisterRustLogCallbackFn>(
+        ResolveSymbol("rs_register_rust_log_callback", error));
+  }
+  return register_rust_log_;
+}

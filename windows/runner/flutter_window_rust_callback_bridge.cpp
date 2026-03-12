@@ -54,6 +54,22 @@ void RustSessionEventBridge(void* user_data,
       std::string(reinterpret_cast<const char*>(session_id), session_id_len),
       std::string(reinterpret_cast<const char*>(event_json), event_json_len));
 }
+
+// Rust -> C++ 桥回调（Rust tracing 日志）。
+void RustLogBridge(void* user_data,
+                   const uint8_t* level,
+                   size_t level_len,
+                   const uint8_t* message,
+                   size_t message_len) {
+  auto* self = static_cast<FlutterWindow*>(user_data);
+  if (self == nullptr || level == nullptr || message == nullptr ||
+      level_len == 0 || message_len == 0) {
+    return;
+  }
+  self->OnRustLog(
+      std::string(reinterpret_cast<const char*>(level), level_len),
+      std::string(reinterpret_cast<const char*>(message), message_len));
+}
 }  // namespace
 
 bool FlutterWindow::EnsureRustV2CallbackRegistered(std::string* error) {
@@ -137,6 +153,33 @@ bool FlutterWindow::EnsureRustSessionEventCallbackRegistered(std::string* error)
   return true;
 }
 
+bool FlutterWindow::EnsureRustLogCallbackRegistered(std::string* error) {
+  // 功能：确保 Rust tracing 日志回调注册完成。
+  //
+  // 参数说明：
+  // - error：输出参数。注册失败时写入错误文案。
+  //
+  // 设计说明：
+  // - 回调只需要注册一次，重复调用直接返回成功；
+  // - 由 bindSessionEvents 一并触发，避免 Dart 侧额外初始化流程。
+  if (rust_log_callback_registered_.load(std::memory_order_acquire)) {
+    return true;
+  }
+  auto& rust_api = RustScrcpyDllApi::Instance();
+  const auto register_fn = rust_api.RegisterRustLog(error);
+  if (register_fn == nullptr) {
+    return false;
+  }
+  const bool ok = register_fn(&RustLogBridge, this);
+  if (!ok) {
+    if (error) *error = "RustLog 回调注册失败：Rust 返回 false";
+    return false;
+  }
+  rust_log_callback_registered_.store(true, std::memory_order_release);
+  OutputDebugStringA("[日志] Rust tracing 回调注册成功\n");
+  return true;
+}
+
 bool FlutterWindow::BindSessionEvents(std::string* error) {
   // 功能：对外提供“会话事件桥绑定”动作。
   //
@@ -147,6 +190,9 @@ bool FlutterWindow::BindSessionEvents(std::string* error) {
   // - 该函数不接收业务参数，只负责完成回调链路初始化；
   // - 成功后 Rust 事件将通过窗口消息转发到 session_event_bridge。
   if (!EnsureRustSessionEventCallbackRegistered(error)) {
+    return false;
+  }
+  if (!EnsureRustLogCallbackRegistered(error)) {
     return false;
   }
   OutputDebugStringA("[事件] 已绑定 SessionEvent 回调链路\n");
@@ -229,6 +275,27 @@ void FlutterWindow::OnRustSessionEvent(const std::string& session_id,
   payload->event_json = event_json;
   // 通过窗口消息切换到 UI 线程再调用 MethodChannel，避免跨线程直接触达 Dart。
   if (!PostMessageW(hwnd, kRustSessionEventMessage,
+                    reinterpret_cast<WPARAM>(payload.get()), 0)) {
+    return;
+  }
+  payload.release();
+}
+
+void FlutterWindow::OnRustLog(const std::string& level,
+                              const std::string& message) {
+  // 此处不做日志格式化，仅负责跨线程转发到窗口消息队列。
+  if (session_event_bridge_channel_ == nullptr) {
+    return;
+  }
+  const HWND hwnd = GetHandle();
+  if (hwnd == nullptr) {
+    return;
+  }
+  auto payload = std::make_unique<RustLogPayload>();
+  payload->level = level;
+  payload->message = message;
+  // 通过窗口消息切换到 UI 线程再调用 MethodChannel，避免跨线程直接触达 Dart。
+  if (!PostMessageW(hwnd, kRustLogMessage,
                     reinterpret_cast<WPARAM>(payload.get()), 0)) {
     return;
   }

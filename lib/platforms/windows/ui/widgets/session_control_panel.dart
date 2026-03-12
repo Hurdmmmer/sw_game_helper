@@ -173,7 +173,7 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
             height: 34,
             child: ElevatedButton.icon(
               style: actionStyle,
-              onPressed: canConnect && !isLoading
+              onPressed: canConnect 
                   ? () => _onActionButtonClick(devices, appSettings)
                   : null,
               icon: Icon(actionIcon, size: 14),
@@ -194,10 +194,10 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
               onPressed: isLoading
                   ? null
                   : () {
-                      setState(() {
-                        _selectedDeviceId = null;
-                        _isConnected = false;
-                      });
+                      // setState(() {
+                      //   _selectedDeviceId = null;
+                      //   _isConnected = false;
+                      // });
                       ref.invalidate(allDevicesProvider);
                     },
               child: RotationTransition(

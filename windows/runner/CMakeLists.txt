@@ -27,7 +27,7 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 target_compile_options(${BINARY_NAME} PRIVATE /utf-8)
 
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
-target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib" "dxgi.lib" "d3d11.lib")
+target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib" "dxgi.lib" "d3d11.lib" "dbghelp.lib")
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 add_dependencies(${BINARY_NAME} flutter_assemble)

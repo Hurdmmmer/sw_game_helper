@@ -48,6 +48,8 @@ class ScrcpyRustThirdPartyApi {
   /// 使用方式：
   /// `await ScrcpyRustThirdPartyApi.instance.initLogger(maxLevel: bridge.LogLevel.info);`
   Future<void> initLogger({LogLevel maxLevel = LogLevel.info}) async {
+    // 先绑定 Runner 回调桥，确保 Rust 日志可回流到 Flutter。
+    _ensureSessionEventBridgeBound();
     await flutter_api.setupLogger(maxLevel: maxLevel);
   }
 
@@ -229,6 +231,10 @@ class ScrcpyRustThirdPartyApi {
 
   /// 处理 Runner -> Dart 的回调消息。
   Future<dynamic> _handleBridgeCallback(MethodCall call) async {
+    if (call.method == 'onRustLog') {
+      _handleRustLogEvent(call.arguments);
+      return null;
+    }
     if (call.method != 'onSessionEvent') {
       return null;
     }
@@ -258,6 +264,93 @@ class ScrcpyRustThirdPartyApi {
       Log.e('解析 SessionEvent 回调异常堆栈', e, st);
     }
     return null;
+  }
+
+  /// 处理 Runner 回传的 Rust tracing 日志。
+  ///
+  /// 参数结构：
+  /// - level: 日志级别（TRACE/DEBUG/INFO/WARN/ERROR）；
+  /// - message: 日志正文。
+  void _handleRustLogEvent(Object? arguments) {
+    if (arguments is! Map) {
+      return;
+    }
+    final level = arguments['level']?.toString().toUpperCase() ?? 'INFO';
+    final rawMessage = arguments['message']?.toString() ?? '';
+    if (rawMessage.isEmpty) {
+      return;
+    }
+    final message = _normalizeRustMessage(level: level, raw: rawMessage);
+    final prefixed = '[Rust] $message';
+    switch (level) {
+      case 'TRACE':
+        Log.v(prefixed);
+        break;
+      case 'DEBUG':
+        Log.d(prefixed);
+        break;
+      case 'WARN':
+      case 'WARNING':
+        Log.w(prefixed);
+        break;
+      case 'ERROR':
+      case 'FATAL':
+        Log.e(prefixed);
+        break;
+      default:
+        Log.i(prefixed);
+        break;
+    }
+  }
+
+  /// 归一化 Rust tracing 文本，提升可读性。
+  ///
+  /// 输入示例：
+  /// - `target=rust_scrcpy::scrcpy::client::scrcpy_conn message=[连接] ...`
+  /// 输出示例：
+  /// - `[scrcpy_conn] [连接] ...`
+  String _normalizeRustMessage({
+    required String level,
+    required String raw,
+  }) {
+    final trimmed = raw.trim();
+    final targetMatch = RegExp(
+      r'^target=([^\s]+)\s+message=(.+)$',
+    ).firstMatch(trimmed);
+    if (targetMatch == null) {
+      return _sanitizeRustMessageBody(level, trimmed);
+    }
+    final target = targetMatch.group(1) ?? '';
+    var message = targetMatch.group(2) ?? '';
+    message = message.trim();
+    if (message.length >= 2 &&
+        ((message.startsWith('"') && message.endsWith('"')) ||
+            (message.startsWith("'") && message.endsWith("'")))) {
+      message = message.substring(1, message.length - 1);
+    }
+    final segments = target.split('::');
+    final shortTarget = segments.isNotEmpty ? segments.last : target;
+    final body = _sanitizeRustMessageBody(level, message);
+    return '[$shortTarget] $body';
+  }
+
+  /// 清理 Rust 日志正文中的重复级别字段，避免一行内多次出现 INFO/WARN。
+  String _sanitizeRustMessageBody(String level, String body) {
+    var result = body.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+    // 统一去掉 Rust 传入字符串中的 level=INFO 这类重复信息。
+    result = result.replaceAll(RegExp(r'(^|\s)level=[A-Z]+(\s|$)'), ' ');
+
+    // 常见模式：`[server] INFO: ...`，外层已经有日志级别，正文无需再重复。
+    result = result.replaceAllMapped(
+      RegExp(r'\[(server|client)\]\s+(TRACE|DEBUG|INFO|WARN|ERROR):\s*'),
+      (m) => '[${m.group(1)}] ',
+    );
+
+    // 如果正文开头再次重复当前级别，则去掉，保留业务文本。
+    result = result.replaceFirst(RegExp('^${RegExp.escape(level)}\\s*:?\\s*'), '');
+
+    return result.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
   /// 处理 Rust 自定义剪贴板事件：设备复制 -> Windows 剪贴板同步。

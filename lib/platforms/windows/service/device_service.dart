@@ -31,8 +31,8 @@ abstract class DeviceService {
     _statusController.add(status);
   }
 
-  /// 扫描设备列表。
-  Future<List<AppDeviceInfo>> scanDevices(String deviceType);
+  /// 扫描全部设备列表（USB + Wi-Fi）。
+  Future<List<AppDeviceInfo>> scanDevices();
 
   /// 连接设备并启动会话。
   ///

@@ -402,18 +402,17 @@ class DeviceServiceImpl extends DeviceService {
   }
 
   @override
-  Future<List<AppDeviceInfo>> scanDevices(String deviceType) async {
+  Future<List<AppDeviceInfo>> scanDevices() async {
     try {
       final rustDevices = await ScrcpyRustThirdPartyApi.instance.listDevices();
-      final targetMode = ConnectionMode.fromCode(deviceType);
-
-      return rustDevices.where((d) => _modeOf(d) == targetMode).map((d) {
+      return rustDevices.map((d) {
+        final mode = _modeOf(d);
         final ip = d.ip?.trim();
         return AppDeviceInfo(
           name: _displayName(d),
           brand: _inferBrand(d),
           deviceId: d.deviceId,
-          connectionMode: _modeOf(d),
+          connectionMode: mode,
           connectionStatus: ConnectionStatus.disconnected,
           ipAddress: (ip == null || ip.isEmpty) ? null : ip,
           androidVersion: _isUnknown(d.androidVersion)

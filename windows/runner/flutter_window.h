@@ -46,6 +46,8 @@ class FlutterWindow : public Win32Window {
   /// Rust 会话事件回调入口（JSON 字符串透传到 Dart）。
   void OnRustSessionEvent(const std::string& session_id,
                           const std::string& event_json);
+  /// Rust 日志回调入口（level + message 透传到 Dart）。
+  void OnRustLog(const std::string& level, const std::string& message);
 
  protected:
   bool OnCreate() override;
@@ -177,6 +179,8 @@ class FlutterWindow : public Win32Window {
   std::atomic<bool> rust_v1_callback_registered_{false};
   // SessionEvent 回调注册标记：确保只向 Rust 注册一次回调函数指针。
   std::atomic<bool> rust_session_event_callback_registered_{false};
+  // RustLog 回调注册标记：确保只向 Rust 注册一次回调函数指针。
+  std::atomic<bool> rust_log_callback_registered_{false};
 
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       window_title_channel_;
@@ -255,6 +259,15 @@ class FlutterWindow : public Win32Window {
   /// - true：已注册成功（包含“此前已注册”的幂等成功）；
   /// - false：注册失败，调用方应中止后续事件绑定流程。
   bool EnsureRustSessionEventCallbackRegistered(std::string* error);
+  /// 确保 Rust 日志回调已注册（Rust tracing 日志路径）。
+  ///
+  /// 参数：
+  /// - error：失败时写入可读错误信息；成功时保持不变。
+  ///
+  /// 返回：
+  /// - true：已注册成功（包含“此前已注册”的幂等成功）；
+  /// - false：注册失败，调用方应中止后续日志绑定流程。
+  bool EnsureRustLogCallbackRegistered(std::string* error);
   /// 纹理桥接方法分发入口（用于收敛 flutter_window.cpp 体积）。
   ///
   /// 承载的方法族：

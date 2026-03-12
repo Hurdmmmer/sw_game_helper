@@ -7,12 +7,21 @@
 
 // Rust 线程 -> UI 线程的消息号（通过 PostMessage 转发 SessionEvent）。
 constexpr UINT kRustSessionEventMessage = WM_APP + 0x142;
+// Rust 线程 -> UI 线程的消息号（通过 PostMessage 转发 Rust 日志）。
+constexpr UINT kRustLogMessage = WM_APP + 0x143;
 
 // SessionEvent 跨线程传输载荷：
 // Rust 回调线程构造 payload，UI 线程接收后转发给 Dart MethodChannel。
 struct SessionEventPayload {
   std::string session_id;
   std::string event_json;
+};
+
+// RustLog 跨线程传输载荷：
+// Rust 回调线程构造 payload，UI 线程接收后转发给 Dart MethodChannel。
+struct RustLogPayload {
+  std::string level;
+  std::string message;
 };
 
 // 读取 MethodChannel 参数中的 int（兼容 int32/int64）。
