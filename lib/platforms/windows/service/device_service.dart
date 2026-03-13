@@ -41,23 +41,7 @@ abstract class DeviceService {
   Future<List<AppDeviceInfo>> scanDevices();
 
   /// 连接设备并启动会话。
-  ///
-  /// 参数说明：
-  /// - [renderPipelineMode]：渲染管线模式；
-  /// - [decoderMode]：解码器偏好；
-  /// - [turnScreenOff]：连接后是否请求设备熄屏（投屏继续）。
-  /// - [bitRate]：视频码率（单位 bps）；
-  /// - [maxSize]：视频最大边界（scrcpy `--max-size`）；
-  /// - [maxFps]：视频最大帧率（单位 FPS）。
-  Future<bool> connectDevice(
-    AppDeviceInfo device, {
-    RenderPipelineMode renderPipelineMode = RenderPipelineMode.cpuPixelBufferV2,
-    DeviceDecoderMode decoderMode = DeviceDecoderMode.preferHardware,
-    bool turnScreenOff = false,
-    int bitRate = 16000000,
-    int maxSize = 0,
-    int maxFps = 0,
-  });
+  Future<bool> connectDevice(AppDeviceInfo device);
 
   /// 断开当前设备会话并清理资源。
   Future<void> disconnectDevice(AppDeviceInfo? device);

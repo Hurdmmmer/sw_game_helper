@@ -4,12 +4,19 @@ import 'package:sw_game_helper/enums/connection_mode.dart';
 import 'package:sw_game_helper/enums/connection_status.dart';
 import 'package:sw_game_helper/models/device_info.dart';
 import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
-
+import 'package:sw_game_helper/platforms/windows/providers/settings_provider.dart';
 import 'package:sw_game_helper/platforms/windows/service/device_service.dart';
+import 'package:sw_game_helper/platforms/windows/service/settings_reader.dart';
 import 'package:sw_game_helper/platforms/windows/third_sdk/scrcpy_rust_third_party_api.dart';
 import 'package:sw_game_helper/utils/logger_service.dart';
 
 class DeviceServiceImpl extends DeviceService {
+  /// 构造函数。
+  DeviceServiceImpl(this._settingsReader);
+
+  /// 设置读取器：按需获取最新配置，避免缓存过期快照。
+  final SettingsReader _settingsReader;
+
   /// 设备 ID -> 会话 ID 映射（当前实现按设备最多一个活动会话）。
   final Map<String, String> _connectedSessions = {};
 
@@ -222,6 +229,16 @@ class DeviceServiceImpl extends DeviceService {
       return true;
     }
 
+    Log.i(
+      'Connect request: device=${device.deviceId}, '
+      'render=$renderPipelineMode, '
+      'decoder=$decoderMode, '
+      'turnScreenOff=$turnScreenOff, '
+      'bitRate=$bitRate, '
+      'maxSize=$maxSize, '
+      'maxFps=$maxFps',
+    );
+    
     if (replaceExisting &&
         existingSessionId != null &&
         existingSessionId.isNotEmpty) {
@@ -263,6 +280,8 @@ class DeviceServiceImpl extends DeviceService {
     return true;
   }
 
+  /// 尝试自动重连。
+  /// [sessionId] 会话 ID，[epoch] 会话轮次，[reason] 重连原因。
   Future<void> _tryAutoReconnect({
     required String sessionId,
     required int epoch,
@@ -453,30 +472,21 @@ class DeviceServiceImpl extends DeviceService {
   }
 
   @override
-  Future<bool> connectDevice(
-    AppDeviceInfo device, {
-    RenderPipelineMode renderPipelineMode = RenderPipelineMode.cpuPixelBufferV2,
-    DeviceDecoderMode decoderMode = DeviceDecoderMode.forceSoftware,
-    bool turnScreenOff = false,
-    int bitRate = 16000000,
-    int maxSize = 0,
-    int maxFps = 0,
-  }) async {
+  Future<bool> connectDevice(AppDeviceInfo device) async {
     try {
-      Log.i(
-        'Connect request: device=${device.deviceId}, render=$renderPipelineMode, '
-        'decoder=$decoderMode, turnScreenOff=$turnScreenOff, '
-        'bitRate=$bitRate, maxSize=$maxSize, maxFps=$maxFps',
-      );
+      final appSettings = _settingsReader.getCurrentSettings();
+
       refreshDeviceStatus(ConnectionStatus.connecting);
+
       final ok = await _connectSession(
         device,
-        renderPipelineMode: renderPipelineMode,
-        decoderMode: decoderMode,
-        turnScreenOff: turnScreenOff,
-        bitRate: bitRate,
-        maxSize: maxSize,
-        maxFps: maxFps,
+        renderPipelineMode: appSettings.renderPipelineMode,
+        decoderMode: appSettings.decoderMode,
+        turnScreenOff: appSettings.turnScreenOffOnConnect,
+        // 设置页参数透传到 scrcpy 连接配置。
+        bitRate: appSettings.bitrateKbps.toBpsFromKbps(),
+        maxSize: appSettings.maxSizeOption.toMaxSizeValue(),
+        maxFps: appSettings.frameRate,
         replaceExisting: false,
       );
       if (ok) {

@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:sw_game_helper/platforms/windows/bridge_generated/gh_common/model.dart';
 import 'package:sw_game_helper/platforms/windows/providers/settings_provider.dart';
 import 'package:sw_game_helper/platforms/windows/service/device_service.dart';
+import 'package:sw_game_helper/platforms/windows/ui/widgets/app_feedback_dialog.dart';
 import 'package:sw_game_helper/platforms/windows/ui/widgets/panel_primitives.dart';
 import 'package:sw_game_helper/platforms/windows/ui/widgets/styled_dropdown.dart';
 import 'package:sw_game_helper/style/app_tokens.dart';
@@ -255,9 +256,11 @@ class SettingsControlPanel extends ConsumerWidget {
                 style: PanelPrimitives.secondaryButtonStyle(context),
                 onPressed: () {
                   notifier.resetToDefault();
-                  ScaffoldMessenger.of(
+                  AppFeedbackDialog.showSuccess(
                     context,
-                  ).showSnackBar(SnackBar(content: Text('已恢复默认设置')));
+                    title: '已恢复默认设置',
+                    message: '当前连接、视频和推理显示参数都已恢复到默认值。',
+                  );
                 },
                 icon: Icon(LucideIcons.rotateCcw, size: 15),
                 label: Text('恢复默认'),
@@ -270,11 +273,6 @@ class SettingsControlPanel extends ConsumerWidget {
                 style: PanelPrimitives.primaryButtonStyle(context),
                 onPressed: () async {
                   await notifier.applySettings();
-                  // if (context.mounted) {
-                  //   ScaffoldMessenger.of(
-                  //     context,
-                  //   ).showSnackBar(SnackBar(content: Text('设置已应用')));
-                  // }
                 },
                 icon: Icon(LucideIcons.save, size: 15),
                 label: Text('应用并保存'),

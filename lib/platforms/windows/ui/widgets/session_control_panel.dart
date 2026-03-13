@@ -4,7 +4,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:sw_game_helper/enums/connection_status.dart';
 import 'package:sw_game_helper/models/device_info.dart';
 import 'package:sw_game_helper/platforms/windows/providers/device_provider.dart';
-import 'package:sw_game_helper/platforms/windows/providers/settings_provider.dart';
+import 'package:sw_game_helper/platforms/windows/service/device_service.dart';
+import 'package:sw_game_helper/platforms/windows/ui/widgets/app_feedback_dialog.dart';
 import 'package:sw_game_helper/platforms/windows/ui/widgets/panel_primitives.dart';
 import 'package:sw_game_helper/style/app_tokens.dart';
 import 'package:sw_game_helper/utils/logger_service.dart';
@@ -23,14 +24,16 @@ class SessionControlPanel extends ConsumerStatefulWidget {
 /// 会话控制面板状态。
 class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
     with SingleTickerProviderStateMixin {
-  /// 当前选中的设备 ID。
-  String? _selectedDeviceId;
+  /// 当前选中的设备。
+  AppDeviceInfo? _selectedDevice;
 
-  /// 刷新图标旋转控制器（加载中持续旋转）。
+  /// 刷新图标旋转控制器（加载中持续旋转）。   
   late final AnimationController _refreshRotationController;
 
   /// 当前是否正在播放刷新旋转动画。
   bool _isRefreshAnimating = false;
+
+  late final DeviceService _deviceService;
 
   @override
   void initState() {
@@ -40,6 +43,7 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
+    _deviceService = ref.read(deviceServiceProvider);
   }
 
   @override
@@ -65,64 +69,30 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
     }
   }
 
-  /// 执行连接逻辑。
-  Future<void> _connectSelectedDevice(
-    AppDeviceInfo selectedDevice,
-    AppSettings appSettings,
-  ) async {
-    try {
-      final deviceService = ref.read(deviceServiceProvider);
-      final success = await deviceService.connectDevice(
-        selectedDevice,
-        renderPipelineMode: appSettings.renderPipelineMode,
-        decoderMode: appSettings.decoderMode,
-        turnScreenOff: appSettings.turnScreenOffOnConnect,
-        // 设置页参数透传到 scrcpy 连接配置。
-        bitRate: appSettings.bitrateKbps.toBpsFromKbps(),
-        maxSize: appSettings.maxSizeOption.toMaxSizeValue(),
-        maxFps: appSettings.frameRate,
-      );
-      if (!success) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('连接失败')));
-        }
-      }
-    } catch (e) {
-      Log.e('Connection error: $e');
-    }
-  }
-
-  /// 执行断开逻辑。
-  Future<void> _disconnectDevice(List<AppDeviceInfo> devices) async {
-    try {
-      final deviceService = ref.read(deviceServiceProvider);
-      await deviceService.disconnectDevice(deviceService.connectedDevice);
-    } catch (e) {
-      Log.e('Disconnection error: $e');
-    }
-  }
-
   /// 处理顶部按钮点击（连接/断开合并）。
-  Future<void> _onActionButtonClick(
-    List<AppDeviceInfo> devices,
-    AppSettings appSettings,
-    bool isConnected,
-  ) async {
+  Future<void> _onActionButtonClick(bool isConnected,) async {
     if (isConnected) {
-      await _disconnectDevice(devices);
-      return;
+      try {
+        await _deviceService.disconnectDevice(_selectedDevice!);
+      } catch (e) {
+        Log.e('Disconnection error: $e');
+      }
+    } else {
+      try {      
+        final success = await _deviceService.connectDevice(_selectedDevice!);
+        if (!success) {
+          if (mounted) {
+            await AppFeedbackDialog.showError(
+              context,
+              title: '连接失败',
+              message: '无法连接到 ${_selectedDevice!.name}，请检查设备连接状态、调试授权和当前连接参数后重试。',
+            );
+          }
+        }
+      } catch (e) {
+        Log.e('Connection error: $e');
+      }
     }
-
-    final selected = devices.cast<AppDeviceInfo?>().firstWhere(
-      (d) => d?.deviceId == _selectedDeviceId,
-      orElse: () => null,
-    );
-    if (selected == null) {
-      return;
-    }
-    await _connectSelectedDevice(selected, appSettings);
   }
 
   /// 构建标题行（含连接按钮与刷新按钮）。
@@ -131,7 +101,6 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
     required bool isLoading,
     required bool isConnected,
     required List<AppDeviceInfo> devices,
-    required AppSettings appSettings,
   }) {
     final actionLabel = isConnected ? '断开设备' : '连接设备';
     final actionIcon = isConnected ? LucideIcons.unlink2 : LucideIcons.link2;
@@ -164,9 +133,8 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
             height: 34,
             child: ElevatedButton.icon(
               style: actionStyle,
-              onPressed: _selectedDeviceId != null
-                  ? () =>
-                        _onActionButtonClick(devices, appSettings, isConnected)
+              onPressed: _selectedDevice != null
+                  ? () => _onActionButtonClick(isConnected)
                   : null,
               icon: Icon(actionIcon, size: 14),
               label: Text(actionLabel),
@@ -213,7 +181,6 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
     );
     // 根据加载状态同步刷新图标旋转动画。
     _syncRefreshRotation(devicesAsync.isLoading);
-    final appSettings = ref.watch(settingsProvider);
 
     final devices = devicesAsync.value ?? const <AppDeviceInfo>[];
 
@@ -232,7 +199,6 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
           isLoading: devicesAsync.isLoading,
           isConnected: isConnected,
           devices: devices,
-          appSettings: appSettings,
         ),
         SizedBox(height: AppSpacing.sm),
         Expanded(
@@ -241,10 +207,10 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel>
               devices: devices,
               isLoading: devicesAsync.isLoading,
               hasError: devicesAsync.hasError,
-              selectedDeviceId: _selectedDeviceId,
+              selectedDeviceId: _selectedDevice?.deviceId,
               isConnected: isConnected,
-              onSelectDevice: (deviceId) =>
-                  setState(() => _selectedDeviceId = deviceId),
+              onSelectDevice: (device) =>
+                  setState(() => _selectedDevice = device),
             ),
           ),
         ),
@@ -259,7 +225,7 @@ class _DeviceListSection extends StatelessWidget {
   final bool isLoading;
   final bool hasError;
   final String? selectedDeviceId;
-  final ValueChanged<String?> onSelectDevice;
+  final ValueChanged<AppDeviceInfo?> onSelectDevice;
   final bool isConnected;
 
   /// 构造函数。
@@ -305,14 +271,14 @@ class _DeviceListSection extends StatelessWidget {
         (brand != null && brand.trim().isNotEmpty && brand != 'Unknown')
         ? '$brand ${device.name}'
         : device.name;
-        
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
         // 再次点击已选中设备时取消选中，便于用户快速回退选择。
         onTap: !isConnected
-            ? () => onSelectDevice(isSelected ? null : device.deviceId)
+            ? () => onSelectDevice(isSelected ? null : device)
             : null,
         child: Container(
           // 设备列表项关闭内部动画，主题切换时仅跟随全局主题过渡，避免二次闪变。

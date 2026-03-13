@@ -1,12 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sw_game_helper/platforms/windows/service/device_service.dart';
 import 'package:sw_game_helper/platforms/windows/service/device_service_impl.dart';
+import 'package:sw_game_helper/platforms/windows/service/settings_reader.dart';
 import 'package:sw_game_helper/enums/connection_status.dart';
 import 'package:sw_game_helper/models/device_info.dart';
 
+/// 设置读取器提供器。
+final settingsReaderProvider = Provider<SettingsReader>((ref) {
+  return RiverpodSettingsReader(ref);
+});
+
 // 设备服务提供器，类似于 Spring 的 Bean 管理
 final deviceServiceProvider = Provider<DeviceService>((ref) {
-  return DeviceServiceImpl();
+  return DeviceServiceImpl(ref.watch(settingsReaderProvider));
 });
 
 /// 合并设备列表（USB + WiFi）。
@@ -32,9 +38,10 @@ final allDevicesProvider = FutureProvider<List<AppDeviceInfo>>((ref) async {
   return result;
 });
 
-
 // 设备连接状态监听
-final currentDeviceConnectStatusProvider = StreamProvider<ConnectionStatus>((ref) {
+final currentDeviceConnectStatusProvider = StreamProvider<ConnectionStatus>((
+  ref,
+) {
   final deviceService = ref.watch(deviceServiceProvider);
   return deviceService.currentConnectStatus;
 });
