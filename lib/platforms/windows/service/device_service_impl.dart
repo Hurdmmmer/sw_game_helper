@@ -34,6 +34,22 @@ class DeviceServiceImpl extends DeviceService {
   StreamSubscription<SessionEvent>? _eventSub;
   String? _boundSessionId;
 
+  /// YOLO 推理结果广播流（供 UI 叠加框/自动触控逻辑订阅）。
+  final StreamController<YoloFrameResult> _yoloResultController =
+      StreamController<YoloFrameResult>.broadcast();
+
+  /// YOLO 结果订阅（按会话绑定）。
+  StreamSubscription<YoloFrameResult>? _yoloSub;
+
+  /// 当前缓存的 YOLO 配置（由 Flutter 传入模型路径与参数）。
+  YoloConfig? _yoloConfig;
+
+  /// YOLO 引擎是否已经完成过初始化。
+  bool _yoloInitialized = false;
+
+  /// 当前会话 YOLO 开关状态。
+  bool _yoloEnabled = false;
+
   /// 手动断开标志：避免断开期间触发自动重连。
   bool _manualDisconnecting = false;
 
@@ -95,6 +111,86 @@ class DeviceServiceImpl extends DeviceService {
           Log.e('解绑会话事件流失败: $e', e, st);
         }),
       );
+    }
+
+    await _unbindYoloResultStream();
+  }
+
+  /// 解绑 YOLO 结果流订阅。
+  Future<void> _unbindYoloResultStream() async {
+    final sub = _yoloSub;
+    _yoloSub = null;
+    if (sub == null) {
+      return;
+    }
+    await sub.cancel().catchError((Object e, StackTrace st) {
+      Log.e('解绑 YOLO 结果流失败: $e', e, st);
+    });
+  }
+
+  /// 绑定 YOLO 结果流（会话级）。
+  Future<void> _bindYoloResultStream(String sessionId, int epoch) async {
+    await _unbindYoloResultStream();
+    _yoloSub = ScrcpyRustThirdPartyApi.instance
+        .streamYoloResults(sessionId)
+        .listen(
+          (result) {
+            if (!_isSessionActive(sessionId, epoch)) {
+              return;
+            }
+            _yoloResultController.add(result);
+          },
+          onError: (Object e, StackTrace st) {
+            Log.e('YOLO 结果流异常: $e', e, st);
+          },
+        );
+    Log.i('YOLO 结果流绑定成功: session=$sessionId');
+  }
+
+  /// 将当前 YOLO 配置应用到指定会话。
+  ///
+  /// 设计原则：
+  /// 1. 配置存在时，优先 init，后续 update；
+  /// 2. 开关关闭时明确下发 disabled，保证状态一致；
+  /// 3. 会话切换后自动重绑结果流，避免 UI 收不到结果。
+  Future<void> _applyYoloToSession(
+    String sessionId, {
+    required int epoch,
+  }) async {
+    final config = _yoloConfig;
+    if (config == null) {
+      Log.i('YOLO 未配置模型，跳过会话应用: session=$sessionId');
+      return;
+    }
+
+    try {
+      if (!_yoloInitialized) {
+        await ScrcpyRustThirdPartyApi.instance.initYolo(config);
+        _yoloInitialized = true;
+        Log.i('YOLO 会话应用: 首次初始化完成');
+      } else {
+        await ScrcpyRustThirdPartyApi.instance.updateYoloConfig(config);
+        Log.i('YOLO 会话应用: 配置更新完成');
+      }
+    } catch (e, st) {
+      Log.e('YOLO 初始化/更新失败: $e', e, st);
+      rethrow;
+    }
+
+    try {
+      await ScrcpyRustThirdPartyApi.instance.setYoloEnabled(
+        sessionId: sessionId,
+        enabled: _yoloEnabled,
+      );
+      Log.i('YOLO 会话开关下发: session=$sessionId enabled=$_yoloEnabled');
+      if (_yoloEnabled) {
+        await _bindYoloResultStream(sessionId, epoch);
+      } else {
+        await _unbindYoloResultStream();
+      }
+    } catch (e, st) {
+      Log.e('YOLO 会话开关下发失败: $e', e, st);
+      rethrow;
     }
   }
 
@@ -170,7 +266,18 @@ class DeviceServiceImpl extends DeviceService {
           ),
         );
       },
-      stopped: () => refreshDeviceStatus(ConnectionStatus.disconnected),
+      stopped: () {
+        if (!_manualDisconnecting) {
+          unawaited(
+            _tryAutoReconnect(
+              sessionId: sessionId,
+              epoch: epoch,
+              reason: 'session_stopped_unexpected',
+            ),
+          );
+        }
+        refreshDeviceStatus(ConnectionStatus.disconnected);
+      },
       error: (code, message) {
         Log.w('Session error: code=$code message=$message');
         refreshDeviceStatus(ConnectionStatus.disconnected);
@@ -218,6 +325,16 @@ class DeviceServiceImpl extends DeviceService {
     if (!replaceExisting &&
         existingSessionId != null &&
         existingSessionId.isNotEmpty) {
+      final status = connectedDevice?.connectionStatus;
+      final canReuse = status == ConnectionStatus.connected ||
+          status == ConnectionStatus.connecting;
+      if (!canReuse) {
+        Log.w(
+          'Found stale cached session, forcing reconnect: '
+          'device=${device.deviceId} stale_session=$existingSessionId status=$status',
+        );
+        _connectedSessions.remove(device.deviceId);
+      } else {
       currentDevice = device;
       _lastConnectDevice = device;
       _lastRenderPipelineMode = renderPipelineMode;
@@ -227,6 +344,7 @@ class DeviceServiceImpl extends DeviceService {
       _lastMaxSize = maxSize;
       _lastMaxFps = maxFps;
       return true;
+      }
     }
 
     Log.i(
@@ -238,7 +356,7 @@ class DeviceServiceImpl extends DeviceService {
       'maxSize=$maxSize, '
       'maxFps=$maxFps',
     );
-    
+
     if (replaceExisting &&
         existingSessionId != null &&
         existingSessionId.isNotEmpty) {
@@ -268,6 +386,7 @@ class DeviceServiceImpl extends DeviceService {
     _sessionEpoch += 1;
     _activeSessionEpoch = _sessionEpoch;
     await _bindSessionStreams(sessionId, _activeSessionEpoch);
+    await _applyYoloToSession(sessionId, epoch: _activeSessionEpoch);
     _connectedSessions[device.deviceId] = sessionId;
     currentDevice = device;
     _lastConnectDevice = device;
@@ -319,21 +438,7 @@ class DeviceServiceImpl extends DeviceService {
         if (!_isSessionActive(sessionId, epoch)) {
           return;
         }
-        // 第一优先级：同 session 快速重启，避免全量重建。
-        try {
-          await ScrcpyRustThirdPartyApi.instance.restartSession(sessionId);
-          refreshDeviceStatus(ConnectionStatus.connected);
-          Log.i(
-            '[重连] 快速重启成功: device=${device.deviceId} attempt=$attempt session=$sessionId',
-          );
-          return;
-        } catch (e, st) {
-          Log.w(
-            '[重连] 快速重启失败，转全量重连: device=${device.deviceId} attempt=$attempt/$_maxAutoReconnectAttempts reason=$reason error=$e',
-          );
-          Log.e('[重连] 快速重启异常堆栈', e, st);
-        }
-        // 第二优先级：全量重连（create/start + 重绑事件流）。
+        // 统一策略：异常后直接全量重连，切换为新 session_id，避免旧会话状态污染。
         try {
           await _connectSession(
             device,
@@ -347,7 +452,7 @@ class DeviceServiceImpl extends DeviceService {
           );
           refreshDeviceStatus(ConnectionStatus.connected);
           Log.i(
-            '[重连] 全量重连成功: device=${device.deviceId} attempt=$attempt new_session=${_connectedSessions[device.deviceId]} old_session=$sessionId',
+            '[重连] 全量重连成功(新会话): device=${device.deviceId} attempt=$attempt new_session=${_connectedSessions[device.deviceId]} old_session=$sessionId',
           );
           return;
         } catch (fullErr, fullSt) {
@@ -546,6 +651,80 @@ class DeviceServiceImpl extends DeviceService {
   }
 
   @override
+  Future<void> configureYoloModel({
+    required String modelPath,
+    int inputWidth = 640,
+    int inputHeight = 640,
+    double confidenceThreshold = 0.50,
+    double iouThreshold = 0.45,
+    int maxDetections = 100,
+    YoloExecutionProvider provider = YoloExecutionProvider.directMl,
+    int? deviceIndex,
+    int maxInferFps = 15,
+    bool enableAfterConfig = true,
+  }) async {
+    final path = modelPath.trim();
+    if (path.isEmpty) {
+      throw ArgumentError('modelPath 不能为空');
+    }
+    _yoloConfig = YoloConfig(
+      modelPath: path,
+      inputWidth: inputWidth,
+      inputHeight: inputHeight,
+      confidenceThreshold: confidenceThreshold,
+      iouThreshold: iouThreshold,
+      maxDetections: maxDetections,
+      provider: provider,
+      deviceIndex: deviceIndex,
+      maxInferFps: maxInferFps,
+    );
+    _yoloEnabled = enableAfterConfig;
+
+    Log.i(
+      'YOLO 配置已缓存: model=$path input=${inputWidth}x$inputHeight '
+      'conf=$confidenceThreshold iou=$iouThreshold maxDet=$maxDetections '
+      'provider=${provider.name} maxInferFps=$maxInferFps enabled=$_yoloEnabled',
+    );
+
+    final sessionId = currentSessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      Log.i('YOLO 当前无活动会话，配置将在下次连接时自动应用');
+      return;
+    }
+    await _applyYoloToSession(sessionId, epoch: _activeSessionEpoch);
+  }
+
+  @override
+  Future<void> setYoloEnabled(bool enabled) async {
+    _yoloEnabled = enabled;
+    final sessionId = currentSessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      Log.i('YOLO 开关已缓存: enabled=$enabled（当前无活动会话）');
+      return;
+    }
+
+    await ScrcpyRustThirdPartyApi.instance.setYoloEnabled(
+      sessionId: sessionId,
+      enabled: enabled,
+    );
+    if (enabled) {
+      await _bindYoloResultStream(sessionId, _activeSessionEpoch);
+    } else {
+      await _unbindYoloResultStream();
+    }
+    Log.i('YOLO 开关更新成功: session=$sessionId enabled=$enabled');
+  }
+
+  @override
+  Stream<YoloFrameResult> streamYoloResults() => _yoloResultController.stream;
+
+  @override
+  YoloConfig? get currentYoloConfig => _yoloConfig;
+
+  @override
+  bool get yoloEnabled => _yoloEnabled;
+
+  @override
   Future<void> sendTouchEvent(TouchEvent event) async {
     final sessionId = currentSessionId;
     if (sessionId == null || sessionId.isEmpty) {
@@ -687,7 +866,9 @@ class DeviceServiceImpl extends DeviceService {
   void dispose() {
     _disposed = true;
     _unbindSessionStreams();
+    _unbindYoloResultStream();
     _sessionEventController.close();
+    _yoloResultController.close();
     super.dispose();
   }
 }

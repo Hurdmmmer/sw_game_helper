@@ -230,6 +230,45 @@ class ScrcpyRustThirdPartyApi {
     return flutter_api.subscribeSessionEvents(sessionId: sessionId);
   }
 
+  /// 初始化 YOLO 推理配置（仅硬件后端）。
+  ///
+  /// 参数：
+  /// - [config]：初始推理配置（模型路径、阈值、输入尺寸、后端）。
+  Future<void> initYolo(YoloConfig config) async {
+    await flutter_api.initYolo(config: config);
+    Log.i('YOLO 初始化完成: provider=${config.provider.name}');
+  }
+
+  /// 运行中更新 YOLO 推理配置（实时生效）。
+  ///
+  /// 参数：
+  /// - [config]：新的推理配置（可由 Flutter 设置页动态下发）。
+  Future<void> updateYoloConfig(YoloConfig config) async {
+    await flutter_api.updateYoloConfig(config: config);
+    Log.i('YOLO 配置已更新: provider=${config.provider.name}');
+  }
+
+  /// 设置会话级 YOLO 开关。
+  ///
+  /// 参数：
+  /// - [sessionId]：会话 ID；
+  /// - [enabled]：是否启用 YOLO 推理。
+  Future<void> setYoloEnabled({
+    required String sessionId,
+    required bool enabled,
+  }) async {
+    await flutter_api.setYoloEnabled(sessionId: sessionId, enabled: enabled);
+    Log.i('YOLO 会话开关更新: session=$sessionId enabled=$enabled');
+  }
+
+  /// 订阅会话级 YOLO 推理结果流。
+  ///
+  /// 参数：
+  /// - [sessionId]：会话 ID。
+  Stream<YoloFrameResult> streamYoloResults(String sessionId) {
+    return flutter_api.subscribeYoloResults(sessionId: sessionId);
+  }
+
   /// 绑定“设备剪贴板 -> Windows”独立同步通道（Rust 独立 API）。
   Future<void> bindClipboardSync(String sessionId) async {
     if (!_clipboardHandlerBound) {

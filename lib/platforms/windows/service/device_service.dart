@@ -14,7 +14,6 @@ enum DeviceDecoderMode { preferHardware, forceHardware, forceSoftware }
 ///
 /// 负责统一封装“设备连接、输入转发、会话事件、会话统计”等能力。
 abstract class DeviceService {
-  
   final _statusController = StreamController<ConnectionStatus>.broadcast();
 
   AppDeviceInfo? _currentDevice;
@@ -30,7 +29,7 @@ abstract class DeviceService {
       _currentDevice!.connectionStatus = status;
     }
     _statusController.add(status);
-    
+
     // 当设备断开连接时，清空当前设备引用
     if (status == ConnectionStatus.disconnected) {
       _currentDevice = null;
@@ -64,7 +63,7 @@ abstract class DeviceService {
 
   /// 发送剪贴板文本到设备端。
   ///
-  /// 参数说明：
+  /// 参数说明： 
   /// - [text]：要写入设备剪贴板的文本；
   /// - [paste]：是否在写入后立即触发设备端粘贴动作。
   Future<void> sendClipboardToDevice({
@@ -96,6 +95,43 @@ abstract class DeviceService {
 
   /// 获取当前会话统计。
   Future<SessionStats?> getCurrentSessionStats();
+
+  /// 配置 YOLO 模型与推理参数（模型路径由 Flutter 传入）。
+  ///
+  /// 参数说明：
+  /// - [modelPath]：ONNX 模型绝对路径；
+  /// - [inputWidth]/[inputHeight]：网络输入尺寸；
+  /// - [confidenceThreshold]：置信度阈值；
+  /// - [iouThreshold]：NMS IoU 阈值；
+  /// - [maxDetections]：单帧最多检测框；
+  /// - [provider]：推理后端；
+  /// - [deviceIndex]：可选设备索引；
+  /// - [maxInferFps]：推理限频；
+  /// - [enableAfterConfig]：配置后是否立即启用。
+  Future<void> configureYoloModel({
+    required String modelPath,
+    int inputWidth = 640,
+    int inputHeight = 640,
+    double confidenceThreshold = 0.50,
+    double iouThreshold = 0.45,
+    int maxDetections = 100,
+    YoloExecutionProvider provider = YoloExecutionProvider.directMl,
+    int? deviceIndex,
+    int maxInferFps = 15,
+    bool enableAfterConfig = true,
+  });
+
+  /// 设置当前会话 YOLO 开关。
+  Future<void> setYoloEnabled(bool enabled);
+
+  /// 订阅 YOLO 推理结果流。
+  Stream<YoloFrameResult> streamYoloResults();
+
+  /// 当前缓存的 YOLO 配置（用于设置页回显）。
+  YoloConfig? get currentYoloConfig;
+
+  /// 当前 YOLO 启用状态。
+  bool get yoloEnabled;
 
   set currentDevice(AppDeviceInfo? device) {
     _currentDevice = device;
